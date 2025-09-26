@@ -1,7 +1,7 @@
 <html lang="zh-CN"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全球时钟与温度 - World Clock &amp; Temperature</title>
+    <title>全球时钟与天气 - World Clock &amp; Weather</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     
@@ -59,12 +59,27 @@
             .country-code {
                 @apply bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full ml-2;
             }
-            .weather-icon {
-                width: 24px;
-                height: 24px;
-                margin-right: 6px;
-                vertical-align: middle;
-            }
+        /* 优化的CSS样式，添加更好的视觉效果 */
+        .weather-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 6px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        .loading-placeholder {
+            @apply animate-pulse bg-gray-200 rounded;
+        }
+        .temp-display {
+            @apply flex items-center text-sm font-medium;
+        }
+        .country-card {
+            transition: all 0.3s ease;
+            content-visibility: auto;
+        }
+        .country-card:hover {
+            @apply shadow-xl transform scale-[1.02];
+        }
         }
     </style>
 </head>
@@ -76,7 +91,7 @@
                 <i class="fa fa-globe text-primary text-4xl mr-3"></i>
                 <div>
                     <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">SKPL-LIFT</h1>
-                    <p class="text-sm text-gray-500">World Clock &amp; Temperature</p>
+                    <p class="text-sm text-gray-500">World Clock &amp; Weather</p>
                 </div>
             </div>
             
@@ -276,10 +291,10 @@
                 <div class="mb-4 md:mb-0">
                     <div class="flex items-center">
                         <i class="fa fa-globe text-primary text-2xl mr-2"></i>
-                        <span class="font-bold text-xl">全球时钟与温度</span>
-                        <span class="ml-2 text-sm text-gray-400">World Clock &amp; Temperature</span>
+                        <span class="font-bold text-xl">全球时钟与天气</span>
+                        <span class="ml-2 text-sm text-gray-400">World Clock &amp; Weather</span>
                     </div>
-                    <p class="text-gray-400 text-sm mt-2">实时显示世界各国当前时间与温度 / Real-time display of current time and temperature around the world</p>
+                    <p class="text-gray-400 text-sm mt-2">实时显示世界各国当前时间与天气 / Real-time display of current time and weather around the world</p>
                 </div>
                 <div class="text-gray-400 text-sm text-center md:text-right">
                     <p>下班时间判断基于北京时间，默认当地时间9:00-18:00为工作时间</p>
@@ -459,7 +474,6 @@
             { country: "几内亚", countryEn: "Guinea", countryCode: "224", region: "westAfrica", cities: [{ name: "科纳克里", nameEn: "Conakry", utcOffset: 0, lat: 9.53, lon: -13.70 }] },
             { country: "塞拉利昂", countryEn: "Sierra Leone", countryCode: "232", region: "westAfrica", cities: [{ name: "弗里敦", nameEn: "Freetown", utcOffset: 0, lat: 8.48, lon: -13.23 }] },
             { country: "利比里亚", countryEn: "Liberia", countryCode: "231", region: "westAfrica", cities: [{ name: "蒙罗维亚", nameEn: "Monrovia", utcOffset: 0, lat: 6.30, lon: -10.79 }] },
-            { country: "加纳", countryEn: "Ghana", countryCode: "233", region: "westAfrica", cities: [{ name: "阿克拉", nameEn: "Accra", utcOffset: 0, lat: 5.56, lon: -0.20 }] },
             { country: "冈比亚", countryEn: "Gambia", countryCode: "220", region: "westAfrica", cities: [{ name: "班珠尔", nameEn: "Banjul", utcOffset: 0, lat: 13.45, lon: -16.57 }] },
             { country: "几内亚比绍", countryEn: "Guinea-Bissau", countryCode: "245", region: "westAfrica", cities: [{ name: "比绍", nameEn: "Bissau", utcOffset: 0, lat: 11.85, lon: -15.58 }] },
             { country: "佛得角", countryEn: "Cape Verde", countryCode: "238", region: "westAfrica", cities: [{ name: "普拉亚", nameEn: "Praia", utcOffset: -1, lat: 14.92, lon: -23.51 }] },
@@ -640,61 +654,91 @@
             }
         }
 
-        // 设置地区筛选
+        // 设置地区筛选 - 添加错误处理
         function setRegionFilter(region) {
-            currentRegion = region;
-            
-            // 更新桌面版按钮样式
-            document.querySelectorAll('.region-btn').forEach(btn => {
-                if (btn.dataset.region === region) {
-                    btn.className = 'region-btn px-3 py-1 rounded-full text-sm region-pill-active transition-colors';
-                } else {
-                    btn.className = 'region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors';
+            try {
+                currentRegion = region;
+                
+                // 更新桌面版按钮样式
+                document.querySelectorAll('.region-btn').forEach(btn => {
+                    if (btn.dataset.region === region) {
+                        btn.className = 'region-btn px-3 py-1 rounded-full text-sm region-pill-active transition-colors';
+                    } else {
+                        btn.className = 'region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors';
+                    }
+                });
+                
+                // 更新移动版筛选器
+                const mobileRegionFilter = document.getElementById('mobile-region-filter');
+                if (mobileRegionFilter) {
+                    mobileRegionFilter.value = region;
                 }
-            });
-            
-            // 更新移动版筛选器
-            document.getElementById('mobile-region-filter').value = region;
-            
-            // 显示/隐藏子区域筛选
-            document.getElementById('asia-subregions').classList.add('hidden');
-            document.getElementById('europe-subregions').classList.add('hidden');
-            document.getElementById('africa-subregions').classList.add('hidden');
-            
-            if (region === 'asia') {
-                document.getElementById('asia-subregions').classList.remove('hidden');
-            } else if (region === 'europe') {
-                document.getElementById('europe-subregions').classList.remove('hidden');
-            } else if (region === 'africa') {
-                document.getElementById('africa-subregions').classList.remove('hidden');
+                
+                // 显示/隐藏子区域筛选
+                const subregions = ['asia-subregions', 'europe-subregions', 'africa-subregions'];
+                subregions.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.classList.add('hidden');
+                    }
+                });
+                
+                const regionMap = {
+                    'asia': 'asia-subregions',
+                    'europe': 'europe-subregions',
+                    'africa': 'africa-subregions'
+                };
+                
+                if (regionMap[region]) {
+                    const subregionElement = document.getElementById(regionMap[region]);
+                    if (subregionElement) {
+                        subregionElement.classList.remove('hidden');
+                    }
+                }
+                
+                // 重新渲染
+                renderCountries();
+            } catch (error) {
+                console.error('设置地区筛选失败:', error);
             }
-            
-            // 重新渲染
-            renderCountries();
         }
 
-        // 设置状态筛选
+        // 设置状态筛选 - 添加错误处理
         function setStatusFilter(status) {
-            currentStatus = status;
-            
-            // 更新桌面版按钮样式
-            document.getElementById('status-all').className = status === 'all' 
-                ? 'px-3 py-1 rounded-full text-sm bg-primary text-white transition-colors' 
-                : 'px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors';
+            try {
+                currentStatus = status;
                 
-            document.getElementById('status-working').className = status === 'working' 
-                ? 'px-3 py-1 rounded-full text-sm bg-working text-white transition-colors' 
-                : 'px-3 py-1 rounded-full text-sm bg-working/10 text-working hover:bg-working/20 transition-colors';
+                // 更新桌面版按钮样式
+                const statusButtons = {
+                    'status-all': status === 'all' 
+                        ? 'px-3 py-1 rounded-full text-sm bg-primary text-white transition-colors' 
+                        : 'px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors',
+                    'status-working': status === 'working' 
+                        ? 'px-3 py-1 rounded-full text-sm bg-working text-white transition-colors' 
+                        : 'px-3 py-1 rounded-full text-sm bg-working/10 text-working hover:bg-working/20 transition-colors',
+                    'status-offwork': status === 'offwork' 
+                        ? 'px-3 py-1 rounded-full text-sm bg-offwork text-white transition-colors' 
+                        : 'px-3 py-1 rounded-full text-sm bg-offwork/10 text-offwork hover:bg-offwork/20 transition-colors'
+                };
                 
-            document.getElementById('status-offwork').className = status === 'offwork' 
-                ? 'px-3 py-1 rounded-full text-sm bg-offwork text-white transition-colors' 
-                : 'px-3 py-1 rounded-full text-sm bg-offwork/10 text-offwork hover:bg-offwork/20 transition-colors';
-            
-            // 更新移动版筛选器
-            document.getElementById('mobile-status-filter').value = status;
-            
-            // 重新渲染
-            renderCountries();
+                Object.entries(statusButtons).forEach(([id, className]) => {
+                    const button = document.getElementById(id);
+                    if (button) {
+                        button.className = className;
+                    }
+                });
+                
+                // 更新移动版筛选器
+                const mobileStatusFilter = document.getElementById('mobile-status-filter');
+                if (mobileStatusFilter) {
+                    mobileStatusFilter.value = status;
+                }
+                
+                // 重新渲染
+                renderCountries();
+            } catch (error) {
+                console.error('设置状态筛选失败:', error);
+            }
         }
 
         // 处理搜索
@@ -710,72 +754,127 @@
             return 'tempHot';
         }
 
-        // 获取天气图标
+        // 获取天气图标 - 修复图标显示问题
         function getWeatherIcon(weatherCode) {
-            if (weatherCode >= 200 && weatherCode < 300) {
-                return '<i class="fa fa-bolt text-yellow-500"></i>'; // 雷暴
-            } else if (weatherCode >= 300 && weatherCode < 400) {
-                return '<i class="fa fa-tint text-blue-400"></i>'; // 毛毛雨/小雨
-            } else if (weatherCode >= 500 && weatherCode < 600) {
-                return '<i class="fa fa-tint text-blue-600"></i>'; // 雨
-            } else if (weatherCode >= 600 && weatherCode < 700) {
-                return '<i class="fa fa-snowflake-o text-blue-100"></i>'; // 雪
-            } else if (weatherCode >= 700 && weatherCode < 800) {
-                return '<i class="fa fa-cloud text-gray-400"></i>'; // 雾/霾等
-            } else if (weatherCode === 800) {
-                return '<i class="fa fa-sun-o text-yellow-500"></i>'; // 晴天
-            } else if (weatherCode > 800) {
-                return '<i class="fa fa-cloud text-gray-500"></i>'; // 多云
-            }
-            return '<i class="fa fa-question-circle text-gray-400"></i>';
+            const iconMap = {
+                // 晴天
+                0: '<i class="fa fa-sun-o text-yellow-500" style="color: #f59e0b;"></i>',
+                1: '<i class="fa fa-sun-o text-yellow-400" style="color: #fbbf24;"></i>',
+                // 多云
+                2: '<i class="fa fa-cloud-sun text-yellow-300" style="color: #fde047;"></i>',
+                3: '<i class="fa fa-cloud text-gray-500" style="color: #6b7280;"></i>',
+                // 雾
+                45: '<i class="fa fa-cloud text-gray-400" style="color: #9ca3af;"></i>',
+                48: '<i class="fa fa-cloud text-gray-400" style="color: #9ca3af;"></i>',
+                // 毛毛雨
+                51: '<i class="fa fa-tint text-blue-400" style="color: #60a5fa;"></i>',
+                53: '<i class="fa fa-tint text-blue-500" style="color: #3b82f6;"></i>',
+                55: '<i class="fa fa-tint text-blue-600" style="color: #2563eb;"></i>',
+                56: '<i class="fa fa-tint text-blue-300" style="color: #93c5fd;"></i>',
+                57: '<i class="fa fa-tint text-blue-400" style="color: #60a5fa;"></i>',
+                // 雨
+                61: '<i class="fa fa-tint text-blue-500" style="color: #3b82f6;"></i>',
+                63: '<i class="fa fa-tint text-blue-600" style="color: #2563eb;"></i>',
+                65: '<i class="fa fa-tint text-blue-700" style="color: #1d4ed8;"></i>',
+                66: '<i class="fa fa-tint text-blue-300" style="color: #93c5fd;"></i>',
+                67: '<i class="fa fa-tint text-blue-400" style="color: #60a5fa;"></i>',
+                // 雪
+                71: '<i class="fa fa-snowflake-o text-blue-200" style="color: #dbeafe;"></i>',
+                73: '<i class="fa fa-snowflake-o text-blue-300" style="color: #93c5fd;"></i>',
+                75: '<i class="fa fa-snowflake-o text-blue-400" style="color: #60a5fa;"></i>',
+                77: '<i class="fa fa-snowflake-o text-blue-300" style="color: #93c5fd;"></i>',
+                // 阵雨
+                80: '<i class="fa fa-tint text-blue-500" style="color: #3b82f6;"></i>',
+                81: '<i class="fa fa-tint text-blue-600" style="color: #2563eb;"></i>',
+                82: '<i class="fa fa-tint text-blue-700" style="color: #1d4ed8;"></i>',
+                // 阵雪
+                85: '<i class="fa fa-snowflake-o text-blue-300" style="color: #93c5fd;"></i>',
+                86: '<i class="fa fa-snowflake-o text-blue-400" style="color: #60a5fa;"></i>',
+                // 雷暴
+                95: '<i class="fa fa-bolt text-yellow-500" style="color: #eab308;"></i>',
+                96: '<i class="fa fa-bolt text-yellow-600" style="color: #ca8a04;"></i>',
+                99: '<i class="fa fa-bolt text-yellow-700" style="color: #a16207;"></i>'
+            };
+            
+            return iconMap[weatherCode] || '<i class="fa fa-question-circle text-gray-400" style="color: #9ca3af;"></i>';
         }
 
-        // 批量获取天气数据 - 减少请求次数
-        function getBatchWeatherData(coordinates) {
-            // 每批最多请求5个坐标点，避免URL过长
-            const batchSize = 5;
-            const batches = [];
+        // 获取单个位置的天气数据
+        async function getWeatherData(lat, lon) {
+            try {
+                const url = `${weatherConfig.weatherApiUrl}?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=GMT`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const key = `${lat},${lon}`;
+                const weatherData = {
+                    temp: Math.round(data.current_weather.temperature),
+                    weatherCode: data.current_weather.weathercode,
+                    weatherDesc: getWeatherDescription(data.current_weather.weathercode),
+                    timestamp: Date.now()
+                };
+                
+                temperatureCache.set(key, weatherData);
+                saveTemperatureCache();
+                return weatherData;
+            } catch (error) {
+                console.error('获取天气数据失败:', error);
+                return null;
+            }
+        }
+        
+        // 批量获取天气数据 - 使用延迟减少服务器压力
+        async function getBatchWeatherData(coordinates) {
+            const results = [];
             
-            // 分割坐标数组为多个批次
-            for (let i = 0; i < coordinates.length; i += batchSize) {
-                batches.push(coordinates.slice(i, i + batchSize));
+            for (let i = 0; i < coordinates.length; i++) {
+                const {lat, lon, elementId} = coordinates[i];
+                const cacheKey = `${lat},${lon}`;
+                
+                // 检查缓存
+                if (temperatureCache.has(cacheKey)) {
+                    const data = temperatureCache.get(cacheKey);
+                    // 检查缓存是否过期（10分钟）
+                    if (Date.now() - data.timestamp < 600000) {
+                        results.push({elementId, data});
+                        continue;
+                    }
+                }
+                
+                // 获取新数据
+                const data = await getWeatherData(lat, lon);
+                if (data) {
+                    results.push({elementId, data});
+                }
+                
+                // 添加小延迟避免API限制
+                if (i < coordinates.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
             }
             
-            // 处理所有批次的请求
-            const promises = batches.map(batch => {
-                // 构建坐标参数
-                const coordsParams = batch.map(({lat, lon}) => `latitude=${lat}&longitude=${lon}`).join('&');
-                const url = `${weatherConfig.weatherApiUrl}?${coordsParams}&current_weather=true&timezone=GMT`;
-                
-                return fetch(url)
-                    .then(response => {
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                        return response.json();
-                    })
-                    .then(data => {
-                        // 处理API响应，更新缓存
-                        batch.forEach((coord, index) => {
-                            const key = `${coord.lat},${coord.lon}`;
-                            const weatherData = {
-                                temp: Math.round(data[index].current_weather.temperature),
-                                weatherCode: data[index].current_weather.weathercode,
-                                weatherDesc: getWeatherDescription(data[index].current_weather.weathercode),
-                                timestamp: Date.now()
-                            };
-                            temperatureCache.set(key, weatherData);
-                        });
-                        return data;
-                    });
+            // 更新所有元素的显示
+            results.forEach(({elementId, data}) => {
+                const element = document.getElementById(elementId);
+                if (element && data) {
+                    const tempClass = getTemperatureClass(data.temp);
+                    const weatherIcon = getWeatherIcon(data.weatherCode);
+                    
+                    element.innerHTML = `
+                        <span class="weather-icon">${weatherIcon}</span>
+                        <span class="temp-indicator bg-${tempClass}"></span>
+                        <span class="temp-text">${data.temp}°C</span>
+                    `;
+                    element.title = `${data.weatherDesc} - ${data.temp}°C`;
+                    element.className = 'temp-display';
+                }
             });
             
-            // 所有批次完成后保存缓存
-            return Promise.all(promises).then(() => {
-                saveTemperatureCache();
-                return true;
-            }).catch(error => {
-                console.error('批量获取天气数据失败:', error);
-                return false;
-            });
+            return true;
         }
 
         // 根据天气代码转换为天气描述
@@ -825,14 +924,16 @@
                 const weatherIcon = getWeatherIcon(data.weatherCode);
                 
                 element.innerHTML = `
-                    ${weatherIcon}
+                    <span class="weather-icon">${weatherIcon}</span>
                     <span class="temp-indicator bg-${tempClass}"></span>
-                    ${data.temp}°C
+                    <span class="temp-text">${data.temp}°C</span>
                 `;
-                element.title = data.weatherDesc;
+                element.title = `${data.weatherDesc} - ${data.temp}°C`;
+                element.className = 'temp-display';
             } else {
                 // 显示加载中
-                element.innerHTML = '<i class="fa fa-spinner fa-spin text-gray-400"></i>';
+                element.innerHTML = '<i class="fa fa-spinner fa-spin text-gray-400 weather-icon"></i><span class="temp-text">--°C</span>';
+                element.className = 'temp-display';
             }
         }
 
@@ -900,167 +1001,154 @@
             visibleElements = newVisible;
         }
 
-        // 渲染国家卡片
+        // 性能监控函数
+        function measurePerformance(fn, name) {
+            const start = performance.now();
+            const result = fn();
+            const end = performance.now();
+            console.log(`${name} 执行时间: ${(end - start).toFixed(2)}ms`);
+            return result;
+        }
+        
+        // 优化的渲染函数 - 添加性能监控
         function renderCountries() {
-            const container = document.getElementById('countries-container');
-            const fragment = document.createDocumentFragment(); // 使用文档片段减少重绘
-            const coordinatesToFetch = [];
-            
-            // 筛选国家
-            filteredCountries = worldData.filter(country => {
-                // 地区筛选
-                if (!isCountryInRegion(country)) return false;
-                
-                // 搜索筛选
-                if (searchTerm) {
-                    const matchesCountry = country.country.toLowerCase().includes(searchTerm) || 
-                                          country.countryEn.toLowerCase().includes(searchTerm);
-                    
-                    if (matchesCountry) return true;
-                    
-                    // 检查是否匹配任何城市
-                    const matchesCity = country.cities.some(city => 
-                        city.name.toLowerCase().includes(searchTerm) || 
-                        city.nameEn.toLowerCase().includes(searchTerm)
-                    );
-                    
-                    if (!matchesCity) return false;
+            return measurePerformance(() => {
+                const container = document.getElementById('countries-container');
+                if (!container) {
+                    console.error('无法找到容器元素');
+                    return;
                 }
                 
-                // 状态筛选
-                if (currentStatus !== 'all') {
-                    // 检查是否有任何城市符合工作状态
-                    const hasMatchingStatus = country.cities.some(city => {
-                        const working = isWorkingHours(city.utcOffset);
-                        return (currentStatus === 'working' && working) || 
-                               (currentStatus === 'offwork' && !working);
-                    });
-                    
-                    if (!hasMatchingStatus) return false;
-                }
+                const fragment = document.createDocumentFragment(); // 使用文档片段减少重绘
+                const coordinatesToFetch = [];
                 
-                return true;
-            });
-            
-            // 更新结果计数
-            const countElement = document.querySelector('#result-count .font-medium');
-            countElement.textContent = filteredCountries.length;
-            
-            // 生成国家卡片
-            filteredCountries.forEach(country => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl p-5 card-shadow country-card-hover country-card';
-                
-                let citiesHtml = '';
-                country.cities.forEach((city, cityIndex) => {
-                    const isWorking = isWorkingHours(city.utcOffset);
-                    const timeId = `time-${country.countryCode}-${cityIndex}`;
+                // 筛选国家
+                filteredCountries = worldData.filter(country => {
+                    // 地区筛选
+                    if (!isCountryInRegion(country)) return false;
                     
-                    // 收集需要获取天气数据的坐标
-                    const cacheKey = `${city.lat},${city.lon}`;
-                    if (!temperatureCache.has(cacheKey)) {
-                        coordinatesToFetch.push({
-                            lat: city.lat,
-                            lon: city.lon,
-                            elementId: `temp-${country.countryCode}-${cityIndex}`
-                        });
+                    // 搜索筛选
+                    if (searchTerm) {
+                        const matchesCountry = country.country.toLowerCase().includes(searchTerm) || 
+                                              country.countryEn.toLowerCase().includes(searchTerm);
+                        
+                        if (matchesCountry) return true;
+                        
+                        // 检查是否匹配任何城市
+                        const matchesCity = country.cities.some(city => 
+                            city.name.toLowerCase().includes(searchTerm) || 
+                            city.nameEn.toLowerCase().includes(searchTerm)
+                        );
+                        
+                        if (!matchesCity) return false;
                     }
                     
-                    citiesHtml += `
-                        <div class="mb-3 last:mb-0">
-                            <div class="flex justify-between items-center mb-1">
-                                <div class="flex items-center">
-                                    <span class="font-medium">${city.name} / ${city.nameEn}</span>
-                                    <span class="text-xs text-gray-500 ml-2">UTC${city.utcOffset >= 0 ? '+' : ''}${city.utcOffset}</span>
-                                </div>
-                                <span class="text-xs px-2 py-0.5 rounded-full ${isWorking ? 'bg-working/10 text-working' : 'bg-offwork/10 text-offwork'}">
-                                    ${isWorking ? '工作中' : '已下班'}
-                                </span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span id="${timeId}" class="text-xl font-semibold" data-utc-offset="${city.utcOffset}">
-                                    ${getLocalTimeString(city.utcOffset)}
-                                </span>
-                                <span id="temp-${country.countryCode}-${cityIndex}" class="flex items-center">
-                                    <i class="fa fa-spinner fa-spin text-gray-400"></i>
-                                </span>
-                            </div>
-                        </div>
-                    `;
+                    // 状态筛选
+                    if (currentStatus !== 'all') {
+                        // 检查是否有任何城市符合工作状态
+                        const hasMatchingStatus = country.cities.some(city => {
+                            const working = isWorkingHours(city.utcOffset);
+                            return (currentStatus === 'working' && working) || 
+                                   (currentStatus === 'offwork' && !working);
+                        });
+                        
+                        if (!hasMatchingStatus) return false;
+                    }
+                    
+                    return true;
                 });
                 
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <h3 class="font-bold text-lg">${country.country} <span class="country-code">+${country.countryCode}</span></h3>
-                        <span class="text-sm text-gray-500">${country.countryEn}</span>
-                    </div>
-                    <div class="city-list">
-                        ${citiesHtml}
-                    </div>
-                `;
-                
-                fragment.appendChild(card);
-            });
-            
-            // 清空容器并添加新内容
-            container.innerHTML = '';
-            container.appendChild(fragment);
-            
-            // 批量更新可见元素集合
-            updateVisibleElements();
-            
-            // 批量获取需要的天气数据
-            if (coordinatesToFetch.length > 0) {
-                // 控制并发请求数量，避免同时发起太多请求
-                const MAX_CONCURRENT_REQUESTS = 3;
-                const chunks = [];
-                
-                for (let i = 0; i < coordinatesToFetch.length; i += MAX_CONCURRENT_REQUESTS * 5) {
-                    chunks.push(coordinatesToFetch.slice(i, i + MAX_CONCURRENT_REQUESTS * 5));
+                // 更新结果计数
+                const countElement = document.querySelector('#result-count .font-medium');
+                if (countElement) {
+                    countElement.textContent = filteredCountries.length;
                 }
                 
-                // 依次处理每个数据块
-                (function processChunks(index) {
-                    if (index >= chunks.length) return;
+                // 生成国家卡片
+                filteredCountries.forEach(country => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-xl p-5 card-shadow country-card-hover country-card';
                     
-                    getBatchWeatherData(chunks[index]).then(success => {
-                        if (success) {
-                            // 更新当前批次的温度显示
-                            chunks[index].forEach(({lat, lon, elementId}) => {
-                                const element = document.getElementById(elementId);
-                                if (element) {
-                                    const data = temperatureCache.get(`${lat},${lon}`);
-                                    if (data) {
-                                        const tempClass = getTemperatureClass(data.temp);
-                                        const weatherIcon = getWeatherIcon(data.weatherCode);
-                                        
-                                        element.innerHTML = `
-                                            ${weatherIcon}
-                                            <span class="temp-indicator bg-${tempClass}"></span>
-                                            ${data.temp}°C
-                                        `;
-                                        element.title = data.weatherDesc;
-                                    }
-                                }
+                    let citiesHtml = '';
+                    country.cities.forEach((city, cityIndex) => {
+                        const isWorking = isWorkingHours(city.utcOffset);
+                        const timeId = `time-${country.countryCode}-${cityIndex}`;
+                        
+                        // 收集需要获取天气数据的坐标
+                        const cacheKey = `${city.lat},${city.lon}`;
+                        if (!temperatureCache.has(cacheKey) || 
+                            (Date.now() - temperatureCache.get(cacheKey).timestamp > 600000)) {
+                            coordinatesToFetch.push({
+                                lat: city.lat,
+                                lon: city.lon,
+                                elementId: `temp-${country.countryCode}-${cityIndex}`
                             });
                         }
-                        // 处理下一个数据块
-                        processChunks(index + 1);
+                        
+                        citiesHtml += `
+                            <div class="mb-3 last:mb-0">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="flex items-center">
+                                        <span class="font-medium">${city.name} / ${city.nameEn}</span>
+                                        <span class="text-xs text-gray-500 ml-2">UTC${city.utcOffset >= 0 ? '+' : ''}${city.utcOffset}</span>
+                                    </div>
+                                    <span class="text-xs px-2 py-0.5 rounded-full ${isWorking ? 'bg-working/10 text-working' : 'bg-offwork/10 text-offwork'}">
+                                        ${isWorking ? '工作中' : '已下班'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span id="${timeId}" class="text-xl font-semibold" data-utc-offset="${city.utcOffset}">
+                                        ${getLocalTimeString(city.utcOffset)}
+                                    </span>
+                                    <span id="temp-${country.countryCode}-${cityIndex}" class="temp-display">
+                                        <i class="fa fa-spinner fa-spin text-gray-400 weather-icon"></i>
+                                        <span class="temp-text">--°C</span>
+                                    </span>
+                                </div>
+                            </div>
+                        `;
                     });
-                })(0);
-            } else {
-                // 如果所有数据都在缓存中，直接更新
-                document.querySelectorAll('[id^="temp-"]').forEach(element => {
-                    const parts = element.id.split('-');
-                    if (parts.length >= 3) {
-                        const country = filteredCountries.find(c => c.countryCode === parts[1]);
-                        if (country && country.cities[parts[2]]) {
-                            const city = country.cities[parts[2]];
-                            updateCityTemperature(element, city.name, city.lat, city.lon);
-                        }
-                    }
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-bold text-lg">${country.country} <span class="country-code">+${country.countryCode}</span></h3>
+                            <span class="text-sm text-gray-500">${country.countryEn}</span>
+                        </div>
+                        <div class="city-list">
+                            ${citiesHtml}
+                        </div>
+                    `;
+                    
+                    fragment.appendChild(card);
                 });
-            }
+                
+                // 清空容器并添加新内容
+                container.innerHTML = '';
+                container.appendChild(fragment);
+                
+                // 批量更新可见元素集合
+                updateVisibleElements();
+                
+                // 异步获取天气数据，避免阻塞UI
+                if (coordinatesToFetch.length > 0) {
+                    // 立即开始获取天气数据，不阻塞界面
+                    getBatchWeatherData(coordinatesToFetch).catch(error => {
+                        console.error('获取天气数据失败:', error);
+                    });
+                } else {
+                    // 如果所有数据都在缓存中，直接更新
+                    document.querySelectorAll('[id^="temp-"]').forEach(element => {
+                        const parts = element.id.split('-');
+                        if (parts.length >= 3) {
+                            const country = filteredCountries.find(c => c.countryCode === parts[1]);
+                            if (country && country.cities[parts[2]]) {
+                                const city = country.cities[parts[2]];
+                                updateCityTemperature(element, city.name, city.lat, city.lon);
+                            }
+                        }
+                    });
+                }
+            }, '渲染国家列表');
         }
 
       // 更新北京时间显示
