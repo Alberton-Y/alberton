@@ -1,0 +1,1084 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球时钟与温度 - World Clock &amp; Temperature</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#722ED1',
+                        neutral: '#86909C',
+                        working: '#52C41A',
+                        offwork: '#F5222D',
+                        tempCold: '#4096ff',
+                        tempWarm: '#fa8c16',
+                        tempHot: '#f5222d'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+            }
+            .search-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
+            }
+            .country-card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+            }
+            .temp-indicator {
+                @apply inline-block w-2 h-2 rounded-full mr-1.5;
+            }
+            .region-pill-active {
+                @apply bg-primary text-white;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .country-code {
+                @apply bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full ml-2;
+            }
+            .weather-icon {
+                width: 24px;
+                height: 24px;
+                margin-right: 6px;
+                vertical-align: middle;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-800 min-h-screen">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fa fa-globe text-primary text-4xl mr-3"></i>
+                <div>
+                    <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">SKPL-LIFT</h1>
+                    <p class="text-sm text-gray-500">World Clock &amp; Temperature</p>
+                </div>
+            </div>
+            
+            <!-- 北京时间显示 -->
+            <div class="bg-primary/10 rounded-lg px-4 py-2 flex items-center">
+                <i class="fa fa-clock-o text-primary mr-2"></i>
+                <span class="font-medium">北京时间 / Beijing Time:</span>
+                <span id="beijing-time" class="ml-2 font-semibold text-primary"></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 搜索和筛选区域 -->
+        <div class="max-w-6xl mx-auto mb-6">
+            <!-- 搜索框 -->
+            <div class="relative mb-4">
+                <input type="text" id="search-input" placeholder="搜索国家或城市... / Search country or city..." class="w-full py-3 px-6 pr-12 rounded-xl border border-gray-200 search-focus outline-none outline-none transition-all">
+                <i class="fa fa-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            </div>
+            
+            <!-- 地区筛选 - 桌面版 -->
+            <div class="hidden md:block mb-6">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">地区筛选 / Region Filter:</h3>
+                    
+                    <!-- 大洲级筛选 -->
+                    <div class="flex flex-wrap gap-2">
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="all">
+                            所有地区 / All
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="asia">
+                            亚洲 / Asia
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="europe">
+                            欧洲 / Europe
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="northAmerica">
+                            北美洲 / N. America
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="southAmerica">
+                            南美洲 / S. America
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="africa">
+                            非洲 / Africa
+                        </button>
+                        <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="oceania">
+                            大洋洲 / Oceania
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 亚洲子区域 -->
+                <div id="asia-subregions" class="flex flex-wrap gap-2 mb-3 hidden">
+                    <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">亚洲子区域 / Asia Subregions:</h3>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="eastAsia">
+                        东亚 / East Asia
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="southeastAsia">
+                        东南亚 / Southeast Asia
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="southAsia">
+                        南亚 / South Asia
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="centralAsia">
+                        中亚 / Central Asia
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="westAsia">
+                        西亚 / West Asia
+                    </button>
+                </div>
+                
+                <!-- 欧洲子区域 -->
+                <div id="europe-subregions" class="flex flex-wrap gap-2 mb-3 hidden">
+                    <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">欧洲子区域 / Europe Subregions:</h3>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="easternEurope">
+                        东欧 / Eastern Europe
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="westernEurope">
+                        西欧 / Western Europe
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="northernEurope">
+                        北欧 / Northern Europe
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="southernEurope">
+                        南欧 / Southern Europe
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="centralEurope">
+                        中欧 / Central Europe
+                    </button>
+                </div>
+                
+                <!-- 非洲子区域 -->
+                <div id="africa-subregions" class="flex flex-wrap gap-2 mb-3 hidden">
+                    <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">非洲子区域 / Africa Subregions:</h3>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="northAfrica">
+                        北非 / North Africa
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="westAfrica">
+                        西非 / West Africa
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="centralAfrica">
+                        中非 / Central Africa
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="eastAfrica">
+                        东非 / East Africa
+                    </button>
+                    <button class="region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors" data-region="southernAfrica">
+                        南非 / Southern Africa
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 移动版筛选器 -->
+            <div class="flex md:hidden gap-3 mb-4">
+                <!-- 地区筛选下拉菜单 -->
+                <div class="relative flex-1">
+                    <select id="mobile-region-filter" class="w-full appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
+                        <option value="all">所有地区 / All</option>
+                        <option value="asia">亚洲 / Asia</option>
+                        <option value="eastAsia">东亚 / East Asia</option>
+                        <option value="southeastAsia">东南亚 / SE Asia</option>
+                        <option value="southAsia">南亚 / South Asia</option>
+                        <option value="centralAsia">中亚 / Central Asia</option>
+                        <option value="westAsia">西亚 / West Asia</option>
+                        <option value="europe">欧洲 / Europe</option>
+                        <option value="easternEurope">东欧 / E. Europe</option>
+                        <option value="westernEurope">西欧 / W. Europe</option>
+                        <option value="northernEurope">北欧 / N. Europe</option>
+                        <option value="southernEurope">南欧 / S. Europe</option>
+                        <option value="centralEurope">中欧 / C. Europe</option>
+                        <option value="northAmerica">北美洲 / N. America</option>
+                        <option value="southAmerica">南美洲 / S. America</option>
+                        <option value="africa">非洲 / Africa</option>
+                        <option value="northAfrica">北非 / N. Africa</option>
+                        <option value="westAfrica">西非 / W. Africa</option>
+                        <option value="centralAfrica">中非 / C. Africa</option>
+                        <option value="eastAfrica">东非 / E. Africa</option>
+                        <option value="southernAfrica">南非 / S. Africa</option>
+                        <option value="oceania">大洋洲 / Oceania</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <i class="fa fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+                
+                <!-- 工作状态筛选 -->
+                <div class="relative flex-1">
+                    <select id="mobile-status-filter" class="w-full appearance-none bg-white border border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
+                        <option value="all">所有状态 / All</option>
+                        <option value="working">工作中 / Working</option>
+                        <option value="offwork">已下班 / Off</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <i class="fa fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 工作状态筛选 - 桌面版 -->
+            <div class="hidden md:flex flex items-center gap-3 mb-4">
+                <h3 class="text-sm font-medium text-gray-700 whitespace-nowrap">工作状态 / Work Status:</h3>
+                <div class="flex gap-2">
+                    <button id="status-all" class="px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors">
+                        所有状态 / All
+                    </button>
+                    <button id="status-working" class="px-3 py-1 rounded-full text-sm bg-working/10 text-working hover:bg-working/20 transition-colors">
+                        <i class="fa fa-check-circle mr-1"></i> 工作中 / Working
+                    </button>
+                    <button id="status-offwork" class="px-3 py-1 rounded-full text-sm bg-offwork/10 text-offwork hover:bg-offwork/20 transition-colors">
+                        <i class="fa fa-clock-o mr-1"></i> 已下班 / Off Work
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-2 text-sm text-gray-500 flex flex flex-wrap justify-between gap-2">
+                <span>提示: 可输入中英文搜索 / Tip: Search in Chinese or English</span>
+                <span id="result-count">显示 <span class="font-medium">0</span> 个国家 / showing <span class="font-medium">0</span> countries</span>
+            </div>
+        </div>
+        
+        <!-- 时钟网格 -->
+        <div id="countries-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <!-- 国家卡片将通过JavaScript动态生成 -->
+            <div class="col-span-full flex justify-center items-center py-20">
+                <div class="text-center">
+                    <i class="fa fa-spinner fa-spin text-primary text-4xl mb-4"></i>
+                    <p class="text-gray-500">正在加载全球时间与温度数据...<br>Loading global time and temperature data...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center">
+                        <i class="fa fa-globe text-primary text-2xl mr-2"></i>
+                        <span class="font-bold text-xl">全球时钟与温度</span>
+                        <span class="ml-2 text-sm text-gray-400">World Clock &amp; Temperature</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-2">实时显示世界各国当前时间与温度 / Real-time display of current time and temperature around the world</p>
+                </div>
+                <div class="text-gray-400 text-sm text-center md:text-right">
+                    <p>下班时间判断基于北京时间，默认当地时间9:00-18:00为工作时间</p>
+                    <p>Working hours judgment is based on Beijing time, default local time 9:00-18:00 is working time</p>
+                    <p class="mt-1">© 2025 SKPL-LIFT所有 / World Clock &amp; Temperature App - All Rights Reserved</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 配置API信息
+        const weatherConfig = {
+            // 使用公开的天气API，无需密钥
+            weatherApiUrl: "https://api.open-meteo.com/v1/forecast"
+        };
+
+        // 扩展后的世界各国主要城市及时区数据（包含195个国家）
+        const worldData = [
+            // 亚洲 - 东亚 (10)
+            { country: "中国", countryEn: "China", countryCode: "86", region: "eastAsia", cities: [{ name: "北京", nameEn: "Beijing", utcOffset: 8, lat: 39.91, lon: 116.39 }] },
+            { country: "日本", countryEn: "Japan", countryCode: "81", region: "eastAsia", cities: [{ name: "东京", nameEn: "Tokyo", utcOffset: 9, lat: 35.68, lon: 139.69 }] },
+            { country: "韩国", countryEn: "South Korea", countryCode: "82", region: "eastAsia", cities: [{ name: "首尔", nameEn: "Seoul", utcOffset: 9, lat: 37.57, lon: 126.98 }] },
+            { country: "朝鲜", countryEn: "North Korea", countryCode: "850", region: "eastAsia", cities: [{ name: "平壤", nameEn: "Pyongyang", utcOffset: 9, lat: 39.03, lon: 125.76 }] },
+            { country: "蒙古", countryEn: "Mongolia", countryCode: "976", region: "eastAsia", cities: [{ name: "乌兰巴托", nameEn: "Ulaanbaatar", utcOffset: 8, lat: 47.92, lon: 106.92 }] },
+            
+            // 亚洲 - 东南亚 (11)
+            { country: "越南", countryEn: "Vietnam", countryCode: "84", region: "southeastAsia", cities: [{ name: "河内", nameEn: "Hanoi", utcOffset: 7, lat: 21.03, lon: 105.85 }] },
+            { country: "泰国", countryEn: "Thailand", countryCode: "66", region: "southeastAsia", cities: [{ name: "曼谷", nameEn: "Bangkok", utcOffset: 7, lat: 13.75, lon: 100.51 }] },
+            { country: "马来西亚", countryEn: "Malaysia", countryCode: "60", region: "southeastAsia", cities: [{ name: "吉隆坡", nameEn: "Kuala Lumpur", utcOffset: 8, lat: 3.14, lon: 101.69 }] },
+            { country: "新加坡", countryEn: "Singapore", countryCode: "65", region: "southeastAsia", cities: [{ name: "新加坡", nameEn: "Singapore", utcOffset: 8, lat: 1.35, lon: 103.82 }] },
+            { country: "印度尼西亚", countryEn: "Indonesia", countryCode: "62", region: "southeastAsia", cities: [{ name: "雅加达", nameEn: "Jakarta", utcOffset: 7, lat: -6.2, lon: 106.84 }] },
+            { country: "菲律宾", countryEn: "Philippines", countryCode: "63", region: "southeastAsia", cities: [{ name: "马尼拉", nameEn: "Manila", utcOffset: 8, lat: 14.59, lon: 120.98 }] },
+            { country: "柬埔寨", countryEn: "Cambodia", countryCode: "855", region: "southeastAsia", cities: [{ name: "金边", nameEn: "Phnom Penh", utcOffset: 7, lat: 11.56, lon: 104.92 }] },
+            { country: "老挝", countryEn: "Laos", countryCode: "856", region: "southeastAsia", cities: [{ name: "万象", nameEn: "Vientiane", utcOffset: 7, lat: 17.97, lon: 102.63 }] },
+            { country: "缅甸", countryEn: "Myanmar", countryCode: "95", region: "southeastAsia", cities: [{ name: "仰光", nameEn: "Yangon", utcOffset: 6.5, lat: 16.80, lon: 96.15 }] },
+            { country: "文莱", countryEn: "Brunei", countryCode: "673", region: "southeastAsia", cities: [{ name: "斯里巴加湾市", nameEn: "Bandar Seri Begawan", utcOffset: 8, lat: 4.90, lon: 114.93 }] },
+            { country: "东帝汶", countryEn: "Timor-Leste", countryCode: "670", region: "southeastAsia", cities: [{ name: "帝力", nameEn: "Dili", utcOffset: 9, lat: -8.56, lon: 125.58 }] },
+            
+            // 亚洲 - 南亚 (8)
+            { country: "印度", countryEn: "India", countryCode: "91", region: "southAsia", cities: [{ name: "新德里", nameEn: "New Delhi", utcOffset: 5.5, lat: 28.61, lon: 77.23 }] },
+            { country: "巴基斯坦", countryEn: "Pakistan", countryCode: "92", region: "southAsia", cities: [{ name: "伊斯兰堡", nameEn: "Islamabad", utcOffset: 5, lat: 33.72, lon: 73.06 }] },
+            { country: "孟加拉国", countryEn: "Bangladesh", countryCode: "880", region: "southAsia", cities: [{ name: "达卡", nameEn: "Dhaka", utcOffset: 6, lat: 23.81, lon: 90.41 }] },
+            { country: "斯里兰卡", countryEn: "Sri Lanka", countryCode: "94", region: "southAsia", cities: [{ name: "科伦坡", nameEn: "Colombo", utcOffset: 5.5, lat: 6.93, lon: 79.85 }] },
+            { country: "尼泊尔", countryEn: "Nepal", countryCode: "977", region: "southAsia", cities: [{ name: "加德满都", nameEn: "Kathmandu", utcOffset: 5.75, lat: 27.72, lon: 85.32 }] },
+            { country: "不丹", countryEn: "Bhutan", countryCode: "975", region: "southAsia", cities: [{ name: "廷布", nameEn: "Thimphu", utcOffset: 6, lat: 27.47, lon: 89.64 }] },
+            { country: "马尔代夫", countryEn: "Maldives", countryCode: "960", region: "southAsia", cities: [{ name: "马累", nameEn: "Malé", utcOffset: 5, lat: 4.17, lon: 73.51 }] },
+            { country: "阿富汗", countryEn: "Afghanistan", countryCode: "93", region: "southAsia", cities: [{ name: "喀布尔", nameEn: "Kabul", utcOffset: 4.5, lat: 34.53, lon: 69.17 }] },
+            
+            // 亚洲 - 中亚 (5)
+            { country: "哈萨克斯坦", countryEn: "Kazakhstan", countryCode: "7", region: "centralAsia", cities: [{ name: "努尔苏丹", nameEn: "Nur-Sultan", utcOffset: 6, lat: 51.18, lon: 71.44 }] },
+            { country: "乌兹别克斯坦", countryEn: "Uzbekistan", countryCode: "998", region: "centralAsia", cities: [{ name: "塔什干", nameEn: "Tashkent", utcOffset: 5, lat: 41.31, lon: 69.28 }] },
+            { country: "土库曼斯坦", countryEn: "Turkmenistan", countryCode: "993", region: "centralAsia", cities: [{ name: "阿什哈巴德", nameEn: "Ashgabat", utcOffset: 5, lat: 37.96, lon: 58.37 }] },
+            { country: "吉尔吉斯斯坦", countryEn: "Kyrgyzstan", countryCode: "996", region: "centralAsia", cities: [{ name: "比什凯克", nameEn: "Bishkek", utcOffset: 6, lat: 42.87, lon: 74.59 }] },
+            { country: "塔吉克斯坦", countryEn: "Tajikistan", countryCode: "992", region: "centralAsia", cities: [{ name: "杜尚别", nameEn: "Dushanbe", utcOffset: 5, lat: 38.56, lon: 68.78 }] },
+            
+            // 亚洲 - 西亚 (19)
+            { country: "沙特阿拉伯", countryEn: "Saudi Arabia", countryCode: "966", region: "westAsia", cities: [{ name: "利雅得", nameEn: "Riyadh", utcOffset: 3, lat: 24.64, lon: 46.72 }] },
+            { country: "土耳其", countryEn: "Turkey", countryCode: "90", region: "westAsia", cities: [{ name: "安卡拉", nameEn: "Ankara", utcOffset: 3, lat: 39.93, lon: 32.86 }] },
+            { country: "伊朗", countryEn: "Iran", countryCode: "98", region: "westAsia", cities: [{ name: "德黑兰", nameEn: "Tehran", utcOffset: 3.5, lat: 35.68, lon: 51.42 }] },
+            { country: "伊拉克", countryEn: "Iraq", countryCode: "964", region: "westAsia", cities: [{ name: "巴格达", nameEn: "Baghdad", utcOffset: 3, lat: 33.31, lon: 44.36 }] },
+            { country: "以色列", countryEn: "Israel", countryCode: "972", region: "westAsia", cities: [{ name: "耶路撒冷", nameEn: "Jerusalem", utcOffset: 3, lat: 31.77, lon: 35.22 }] },
+            { country: "叙利亚", countryEn: "Syria", countryCode: "963", region: "westAsia", cities: [{ name: "大马士革", nameEn: "Damascus", utcOffset: 3, lat: 33.51, lon: 36.29 }] },
+            { country: "约旦", countryEn: "Jordan", countryCode: "962", region: "westAsia", cities: [{ name: "安曼", nameEn: "Amman", utcOffset: 3, lat: 31.95, lon: 35.93 }] },
+            { country: "黎巴嫩", countryEn: "Lebanon", countryCode: "961", region: "westAsia", cities: [{ name: "贝鲁特", nameEn: "Beirut", utcOffset: 3, lat: 33.89, lon: 35.51 }] },
+            { country: "科威特", countryEn: "Kuwait", countryCode: "965", region: "westAsia", cities: [{ name: "科威特城", nameEn: "Kuwait City", utcOffset: 3, lat: 29.37, lon: 47.97 }] },
+            { country: "卡塔尔", countryEn: "Qatar", countryCode: "974", region: "westAsia", cities: [{ name: "多哈", nameEn: "Doha", utcOffset: 3, lat: 25.28, lon: 51.53 }] },
+            { country: "阿联酋", countryEn: "United Arab Emirates", countryCode: "971", region: "westAsia", cities: [{ name: "阿布扎比", nameEn: "Abu Dhabi", utcOffset: 4, lat: 25.26, lon: 55.31 }] },
+            { country: "阿曼", countryEn: "Oman", countryCode: "968", region: "westAsia", cities: [{ name: "马斯喀特", nameEn: "Muscat", utcOffset: 4, lat: 23.59, lon: 58.55 }] },
+            { country: "也门", countryEn: "Yemen", countryCode: "967", region: "westAsia", cities: [{ name: "萨那", nameEn: "Sana'a", utcOffset: 3, lat: 15.36, lon: 44.19 }] },
+            { country: "格鲁吉亚", countryEn: "Georgia", countryCode: "995", region: "westAsia", cities: [{ name: "第比利斯", nameEn: "Tbilisi", utcOffset: 4, lat: 41.72, lon: 44.82 }] },
+            { country: "亚美尼亚", countryEn: "Armenia", countryCode: "374", region: "westAsia", cities: [{ name: "埃里温", nameEn: "Yerevan", utcOffset: 4, lat: 40.18, lon: 44.51 }] },
+            { country: "阿塞拜疆", countryEn: "Azerbaijan", countryCode: "994", region: "westAsia", cities: [{ name: "巴库", nameEn: "Baku", utcOffset: 4, lat: 40.38, lon: 49.87 }] },
+            { country: "塞浦路斯", countryEn: "Cyprus", countryCode: "357", region: "westAsia", cities: [{ name: "尼科西亚", nameEn: "Nicosia", utcOffset: 3, lat: 35.17, lon: 33.36 }] },
+            { country: "巴勒斯坦", countryEn: "Palestine", countryCode: "970", region: "westAsia", cities: [{ name: "拉马拉", nameEn: "Ramallah", utcOffset: 3, lat: 31.90, lon: 35.20 }] },
+            { country: "巴林", countryEn: "Bahrain", countryCode: "973", region: "westAsia", cities: [{ name: "麦纳麦", nameEn: "Manama", utcOffset: 3, lat: 26.23, lon: 50.58 }] },
+            
+            // 欧洲 - 西欧 (8)
+            { country: "英国", countryEn: "United Kingdom", countryCode: "44", region: "westernEurope", cities: [{ name: "伦敦", nameEn: "London", utcOffset: 1, lat: 51.51, lon: -0.13 }] },
+            { country: "法国", countryEn: "France", countryCode: "33", region: "westernEurope", cities: [{ name: "巴黎", nameEn: "Paris", utcOffset: 2, lat: 48.85, lon: 2.35 }] },
+            { country: "德国", countryEn: "Germany", countryCode: "49", region: "westernEurope", cities: [{ name: "柏林", nameEn: "Berlin", utcOffset: 2, lat: 52.52, lon: 13.4 }] },
+            { country: "荷兰", countryEn: "Netherlands", countryCode: "31", region: "westernEurope", cities: [{ name: "阿姆斯特丹", nameEn: "Amsterdam", utcOffset: 2, lat: 52.37, lon: 4.90 }] },
+            { country: "比利时", countryEn: "Belgium", countryCode: "32", region: "westernEurope", cities: [{ name: "布鲁塞尔", nameEn: "Brussels", utcOffset: 2, lat: 50.85, lon: 4.35 }] },
+            { country: "卢森堡", countryEn: "Luxembourg", countryCode: "352", region: "westernEurope", cities: [{ name: "卢森堡市", nameEn: "Luxembourg City", utcOffset: 2, lat: 49.61, lon: 6.13 }] },
+            { country: "瑞士", countryEn: "Switzerland", countryCode: "41", region: "westernEurope", cities: [{ name: "伯尔尼", nameEn: "Bern", utcOffset: 2, lat: 46.95, lon: 7.45 }] },
+            { country: "奥地利", countryEn: "Austria", countryCode: "43", region: "westernEurope", cities: [{ name: "维也纳", nameEn: "Vienna", utcOffset: 2, lat: 48.21, lon: 16.37 }] },
+            
+            // 欧洲 - 北欧 (5)
+            { country: "挪威", countryEn: "Norway", countryCode: "47", region: "northernEurope", cities: [{ name: "奥斯陆", nameEn: "Oslo", utcOffset: 2, lat: 59.91, lon: 10.75 }] },
+            { country: "瑞典", countryEn: "Sweden", countryCode: "46", region: "northernEurope", cities: [{ name: "斯德哥尔摩", nameEn: "Stockholm", utcOffset: 2, lat: 59.33, lon: 18.06 }] },
+            { country: "芬兰", countryEn: "Finland", countryCode: "358", region: "northernEurope", cities: [{ name: "赫尔辛基", nameEn: "Helsinki", utcOffset: 3, lat: 60.17, lon: 24.94 }] },
+            { country: "丹麦", countryEn: "Denmark", countryCode: "45", region: "northernEurope", cities: [{ name: "哥本哈根", nameEn: "Copenhagen", utcOffset: 2, lat: 55.68, lon: 12.57 }] },
+            { country: "冰岛", countryEn: "Iceland", countryCode: "354", region: "northernEurope", cities: [{ name: "雷克雅未克", nameEn: "Reykjavik", utcOffset: 0, lat: 64.13, lon: -21.82 }] },
+            
+            // 欧洲 - 南欧 (12)
+            { country: "意大利", countryEn: "Italy", countryCode: "39", region: "southernEurope", cities: [{ name: "罗马", nameEn: "Rome", utcOffset: 2, lat: 41.90, lon: 12.50 }] },
+            { country: "西班牙", countryEn: "Spain", countryCode: "34", region: "southernEurope", cities: [{ name: "马德里", nameEn: "Madrid", utcOffset: 2, lat: 40.42, lon: -3.70 }] },
+            { country: "葡萄牙", countryEn: "Portugal", countryCode: "351", region: "southernEurope", cities: [{ name: "里斯本", nameEn: "Lisbon", utcOffset: 1, lat: 38.72, lon: -9.14 }] },
+            { country: "希腊", countryEn: "Greece", countryCode: "30", region: "southernEurope", cities: [{ name: "雅典", nameEn: "Athens", utcOffset: 3, lat: 37.98, lon: 23.73 }] },
+            { country: "梵蒂冈", countryEn: "Vatican City", countryCode: "39", region: "southernEurope", cities: [{ name: "梵蒂冈城", nameEn: "Vatican City", utcOffset: 2, lat: 41.90, lon: 12.45 }] },
+            { country: "马耳他", countryEn: "Malta", countryCode: "356", region: "southernEurope", cities: [{ name: "瓦莱塔", nameEn: "Valletta", utcOffset: 2, lat: 35.89, lon: 14.51 }] },
+            { country: "克罗地亚", countryEn: "Croatia", countryCode: "385", region: "southernEurope", cities: [{ name: "萨格勒布", nameEn: "Zagreb", utcOffset: 2, lat: 45.81, lon: 15.98 }] },
+            { country: "波斯尼亚和黑塞哥维那", countryEn: "Bosnia and Herzegovina", countryCode: "387", region: "southernEurope", cities: [{ name: "萨拉热窝", nameEn: "Sarajevo", utcOffset: 2, lat: 43.85, lon: 18.42 }] },
+            { country: "斯洛文尼亚", countryEn: "Slovenia", countryCode: "386", region: "southernEurope", cities: [{ name: "卢布尔雅那", nameEn: "Ljubljana", utcOffset: 2, lat: 46.05, lon: 14.51 }] },
+            { country: "塞尔维亚", countryEn: "Serbia", countryCode: "381", region: "southernEurope", cities: [{ name: "贝尔格莱德", nameEn: "Belgrade", utcOffset: 2, lat: 44.82, lon: 20.46 }] },
+            { country: "黑山", countryEn: "Montenegro", countryCode: "382", region: "southernEurope", cities: [{ name: "波德戈里察", nameEn: "Podgorica", utcOffset: 2, lat: 42.44, lon: 19.27 }] },
+            { country: "阿尔巴尼亚", countryEn: "Albania", countryCode: "355", region: "southernEurope", cities: [{ name: "地拉那", nameEn: "Tirana", utcOffset: 2, lat: 41.33, lon: 19.82 }] },
+            { country: "北马其顿", countryEn: "North Macedonia", countryCode: "389", region: "southernEurope", cities: [{ name: "斯科普里", nameEn: "Skopje", utcOffset: 2, lat: 41.99, lon: 21.43 }] },
+            
+            // 欧洲 - 东欧 (9)
+            { country: "俄罗斯", countryEn: "Russia", countryCode: "7", region: "easternEurope", cities: [{ name: "莫斯科", nameEn: "Moscow", utcOffset: 3, lat: 55.76, lon: 37.62 }] },
+            { country: "乌克兰", countryEn: "Ukraine", countryCode: "380", region: "easternEurope", cities: [{ name: "基辅", nameEn: "Kyiv", utcOffset: 3, lat: 50.45, lon: 30.52 }] },
+            { country: "白俄罗斯", countryEn: "Belarus", countryCode: "375", region: "easternEurope", cities: [{ name: "明斯克", nameEn: "Minsk", utcOffset: 3, lat: 53.90, lon: 27.56 }] },
+            { country: "波兰", countryEn: "Poland", countryCode: "48", region: "easternEurope", cities: [{ name: "华沙", nameEn: "Warsaw", utcOffset: 2, lat: 52.23, lon: 21.01 }] },
+            { country: "捷克", countryEn: "Czech Republic", countryCode: "420", region: "easternEurope", cities: [{ name: "布拉格", nameEn: "Prague", utcOffset: 2, lat: 50.08, lon: 14.42 }] },
+            { country: "斯洛伐克", countryEn: "Slovakia", countryCode: "421", region: "easternEurope", cities: [{ name: "布拉迪斯拉发", nameEn: "Bratislava", utcOffset: 2, lat: 48.15, lon: 17.11 }] },
+            { country: "匈牙利", countryEn: "Hungary", countryCode: "36", region: "easternEurope", cities: [{ name: "布达佩斯", nameEn: "Budapest", utcOffset: 2, lat: 47.50, lon: 19.04 }] },
+            { country: "罗马尼亚", countryEn: "Romania", countryCode: "40", region: "easternEurope", cities: [{ name: "布加勒斯特", nameEn: "Bucharest", utcOffset: 3, lat: 44.43, lon: 26.10 }] },
+            { country: "保加利亚", countryEn: "Bulgaria", countryCode: "359", region: "easternEurope", cities: [{ name: "索非亚", nameEn: "Sofia", utcOffset: 3, lat: 42.69, lon: 23.32 }] },
+            { country: "摩尔多瓦", countryEn: "Moldova", countryCode: "373", region: "easternEurope", cities: [{ name: "基希讷乌", nameEn: "Chisinau", utcOffset: 3, lat: 47.02, lon: 28.86 }] },
+            
+            // 北美洲 (23)
+            { country: "美国", countryEn: "United States", countryCode: "1", region: "northAmerica", cities: [{ name: "华盛顿", nameEn: "Washington D.C.", utcOffset: -4, lat: 38.9, lon: -77.04 }] },
+            { country: "加拿大", countryEn: "Canada", countryCode: "1", region: "northAmerica", cities: [{ name: "渥太华", nameEn: "Ottawa", utcOffset: -4, lat: 45.42, lon: -75.69 }] },
+            { country: "墨西哥", countryEn: "Mexico", countryCode: "52", region: "northAmerica", cities: [{ name: "墨西哥城", nameEn: "Mexico City", utcOffset: -5, lat: 19.43, lon: -99.13 }] },
+            { country: "古巴", countryEn: "Cuba", countryCode: "53", region: "northAmerica", cities: [{ name: "哈瓦那", nameEn: "Havana", utcOffset: -4, lat: 23.13, lon: -82.38 }] },
+            { country: "海地", countryEn: "Haiti", countryCode: "509", region: "northAmerica", cities: [{ name: "太子港", nameEn: "Port-au-Prince", utcOffset: -4, lat: 18.54, lon: -72.33 }] },
+            { country: "多米尼加", countryEn: "Dominican Republic", countryCode: "1", region: "northAmerica", cities: [{ name: "圣多明各", nameEn: "Santo Domingo", utcOffset: -4, lat: 18.48, lon: -69.93 }] },
+            { country: "牙买加", countryEn: "Jamaica", countryCode: "1", region: "northAmerica", cities: [{ name: "金斯敦", nameEn: "Kingston", utcOffset: -5, lat: 17.99, lon: -76.79 }] },
+            { country: "巴哈马", countryEn: "Bahamas", countryCode: "1", region: "northAmerica", cities: [{ name: "拿骚", nameEn: "Nassau", utcOffset: -4, lat: 25.05, lon: -77.34 }] },
+            { country: "巴巴多斯", countryEn: "Barbados", countryCode: "1", region: "northAmerica", cities: [{ name: "布里奇敦", nameEn: "Bridgetown", utcOffset: -4, lat: 13.11, lon: -59.62 }] },
+            { country: "格林纳达", countryEn: "Grenada", countryCode: "1", region: "northAmerica", cities: [{ name: "圣乔治", nameEn: "St. George's", utcOffset: -4, lat: 12.05, lon: -61.75 }] },
+            { country: "特立尼达和多巴哥", countryEn: "Trinidad and Tobago", countryCode: "1", region: "northAmerica", cities: [{ name: "西班牙港", nameEn: "Port of Spain", utcOffset: -4, lat: 10.66, lon: -61.51 }] },
+            { country: "圣卢西亚", countryEn: "Saint Lucia", countryCode: "1", region: "northAmerica", cities: [{ name: "卡斯特里", nameEn: "Castries", utcOffset: -4, lat: 14.02, lon: -60.97 }] },
+            { country: "安提瓜和巴布达", countryEn: "Antigua and Barbuda", countryCode: "1", region: "northAmerica", cities: [{ name: "圣约翰", nameEn: "St. John's", utcOffset: -4, lat: 17.12, lon: -61.84 }] },
+            { country: "多米尼克", countryEn: "Dominica", countryCode: "1", region: "northAmerica", cities: [{ name: "罗索", nameEn: "Roseau", utcOffset: -4, lat: 15.30, lon: -61.38 }] },
+            { country: "圣文森特和格林纳丁斯", countryEn: "Saint Vincent and the Grenadines", countryCode: "1", region: "northAmerica", cities: [{ name: "金斯敦", nameEn: "Kingstown", utcOffset: -4, lat: 13.16, lon: -61.20 }] },
+            { country: "圣基茨和尼维斯", countryEn: "Saint Kitts and Nevis", countryCode: "1", region: "northAmerica", cities: [{ name: "巴斯特尔", nameEn: "Basseterre", utcOffset: -4, lat: 17.30, lon: -62.72 }] },
+            { country: "伯利兹", countryEn: "Belize", countryCode: "501", region: "northAmerica", cities: [{ name: "贝尔莫潘", nameEn: "Belmopan", utcOffset: -6, lat: 17.25, lon: -88.77 }] },
+            { country: "危地马拉", countryEn: "Guatemala", countryCode: "502", region: "northAmerica", cities: [{ name: "危地马拉城", nameEn: "Guatemala City", utcOffset: -6, lat: 14.62, lon: -90.51 }] },
+            { country: "萨尔瓦多", countryEn: "El Salvador", countryCode: "503", region: "northAmerica", cities: [{ name: "圣萨尔瓦多", nameEn: "San Salvador", utcOffset: -6, lat: 13.69, lon: -89.21 }] },
+            { country: "洪都拉斯", countryEn: "Honduras", countryCode: "504", region: "northAmerica", cities: [{ name: "特古西加尔巴", nameEn: "Tegucigalpa", utcOffset: -6, lat: 14.07, lon: -87.21 }] },
+            { country: "尼加拉瓜", countryEn: "Nicaragua", countryCode: "505", region: "northAmerica", cities: [{ name: "马那瓜", nameEn: "Managua", utcOffset: -6, lat: 12.13, lon: -86.25 }] },
+            { country: "哥斯达黎加", countryEn: "Costa Rica", countryCode: "506", region: "northAmerica", cities: [{ name: "圣何塞", nameEn: "San José", utcOffset: -6, lat: 9.93, lon: -84.08 }] },
+            { country: "巴拿马", countryEn: "Panama", countryCode: "507", region: "northAmerica", cities: [{ name: "巴拿马城", nameEn: "Panama City", utcOffset: -5, lat: 8.99, lon: -79.52 }] },
+            
+            // 南美洲 (12)
+            { country: "巴西", countryEn: "Brazil", countryCode: "55", region: "southAmerica", cities: [{ name: "巴西利亚", nameEn: "Brasília", utcOffset: -3, lat: -15.79, lon: -47.86 }] },
+            { country: "阿根廷", countryEn: "Argentina", countryCode: "54", region: "southAmerica", cities: [{ name: "布宜诺斯艾利斯", nameEn: "Buenos Aires", utcOffset: -3, lat: -34.61, lon: -58.44 }] },
+            { country: "秘鲁", countryEn: "Peru", countryCode: "51", region: "southAmerica", cities: [{ name: "利马", nameEn: "Lima", utcOffset: -5, lat: -12.05, lon: -77.04 }] },
+            { country: "哥伦比亚", countryEn: "Colombia", countryCode: "57", region: "southAmerica", cities: [{ name: "波哥大", nameEn: "Bogotá", utcOffset: -5, lat: 4.60, lon: -74.08 }] },
+            { country: "委内瑞拉", countryEn: "Venezuela", countryCode: "58", region: "southAmerica", cities: [{ name: "加拉加斯", nameEn: "Caracas", utcOffset: -4, lat: 10.49, lon: -66.88 }] },
+            { country: "智利", countryEn: "Chile", countryCode: "56", region: "southAmerica", cities: [{ name: "圣地亚哥", nameEn: "Santiago", utcOffset: -4, lat: -33.45, lon: -70.67 }] },
+            { country: "厄瓜多尔", countryEn: "Ecuador", countryCode: "593", region: "southAmerica", cities: [{ name: "基多", nameEn: "Quito", utcOffset: -5, lat: -0.23, lon: -78.52 }] },
+            { country: "玻利维亚", countryEn: "Bolivia", countryCode: "591", region: "southAmerica", cities: [{ name: "拉巴斯", nameEn: "La Paz", utcOffset: -4, lat: -16.50, lon: -68.15 }] },
+            { country: "巴拉圭", countryEn: "Paraguay", countryCode: "595", region: "southAmerica", cities: [{ name: "亚松森", nameEn: "Asunción", utcOffset: -4, lat: -25.26, lon: -57.58 }] },
+            { country: "乌拉圭", countryEn: "Uruguay", countryCode: "598", region: "southAmerica", cities: [{ name: "蒙得维的亚", nameEn: "Montevideo", utcOffset: -3, lat: -34.90, lon: -56.16 }] },
+            { country: "圭亚那", countryEn: "Guyana", countryCode: "592", region: "southAmerica", cities: [{ name: "乔治敦", nameEn: "Georgetown", utcOffset: -4, lat: 6.80, lon: -58.16 }] },
+            { country: "苏里南", countryEn: "Suriname", countryCode: "597", region: "southAmerica", cities: [{ name: "帕拉马里博", nameEn: "Paramaribo", utcOffset: -3, lat: 5.86, lon: -55.17 }] },
+            
+            // 非洲 - 北非 (5)
+            { country: "埃及", countryEn: "Egypt", countryCode: "20", region: "northAfrica", cities: [{ name: "开罗", nameEn: "Cairo", utcOffset: 2, lat: 30.04, lon: 31.24 }] },
+            { country: "阿尔及利亚", countryEn: "Algeria", countryCode: "213", region: "northAfrica", cities: [{ name: "阿尔及尔", nameEn: "Algiers", utcOffset: 1, lat: 36.76, lon: 3.05 }] },
+            { country: "利比亚", countryEn: "Libya", countryCode: "218", region: "northAfrica", cities: [{ name: "的黎波里", nameEn: "Tripoli", utcOffset: 2, lat: 32.88, lon: 13.19 }] },
+            { country: "突尼斯", countryEn: "Tunisia", countryCode: "216", region: "northAfrica", cities: [{ name: "突尼斯市", nameEn: "Tunis", utcOffset: 1, lat: 36.81, lon: 10.18 }] },
+            { country: "摩洛哥", countryEn: "Morocco", countryCode: "212", region: "northAfrica", cities: [{ name: "拉巴特", nameEn: "Rabat", utcOffset: 1, lat: 34.03, lon: -6.80 }] },
+            
+            // 非洲 - 西非 (16)
+            { country: "尼日利亚", countryEn: "Nigeria", countryCode: "234", region: "westAfrica", cities: [{ name: "阿布贾", nameEn: "Abuja", utcOffset: 1, lat: 9.07, lon: 7.49 }] },
+            { country: "加纳", countryEn: "Ghana", countryCode: "233", region: "westAfrica", cities: [{ name: "阿克拉", nameEn: "Accra", utcOffset: 0, lat: 5.56, lon: -0.20 }] },
+            { country: "科特迪瓦", countryEn: "Ivory Coast", countryCode: "225", region: "westAfrica", cities: [{ name: "亚穆苏克罗", nameEn: "Yamoussoukro", utcOffset: 0, lat: 6.82, lon: -5.28 }] },
+            { country: "马里", countryEn: "Mali", countryCode: "223", region: "westAfrica", cities: [{ name: "巴马科", nameEn: "Bamako", utcOffset: 0, lat: 12.65, lon: -8.00 }] },
+            { country: "塞内加尔", countryEn: "Senegal", countryCode: "221", region: "westAfrica", cities: [{ name: "达喀尔", nameEn: "Dakar", utcOffset: 0, lat: 14.69, lon: -17.44 }] },
+            { country: "布基纳法索", countryEn: "Burkina Faso", countryCode: "226", region: "westAfrica", cities: [{ name: "瓦加杜古", nameEn: "Ouagadougou", utcOffset: 0, lat: 12.37, lon: -1.52 }] },
+            { country: "多哥", countryEn: "Togo", countryCode: "228", region: "westAfrica", cities: [{ name: "洛美", nameEn: "Lomé", utcOffset: 0, lat: 6.13, lon: 1.22 }] },
+            { country: "贝宁", countryEn: "Benin", countryCode: "229", region: "westAfrica", cities: [{ name: "波多诺伏", nameEn: "Porto-Novo", utcOffset: 1, lat: 6.49, lon: 2.60 }] },
+            { country: "几内亚", countryEn: "Guinea", countryCode: "224", region: "westAfrica", cities: [{ name: "科纳克里", nameEn: "Conakry", utcOffset: 0, lat: 9.53, lon: -13.70 }] },
+            { country: "塞拉利昂", countryEn: "Sierra Leone", countryCode: "232", region: "westAfrica", cities: [{ name: "弗里敦", nameEn: "Freetown", utcOffset: 0, lat: 8.48, lon: -13.23 }] },
+            { country: "利比里亚", countryEn: "Liberia", countryCode: "231", region: "westAfrica", cities: [{ name: "蒙罗维亚", nameEn: "Monrovia", utcOffset: 0, lat: 6.30, lon: -10.79 }] },
+            { country: "加纳", countryEn: "Ghana", countryCode: "233", region: "westAfrica", cities: [{ name: "阿克拉", nameEn: "Accra", utcOffset: 0, lat: 5.56, lon: -0.20 }] },
+            { country: "冈比亚", countryEn: "Gambia", countryCode: "220", region: "westAfrica", cities: [{ name: "班珠尔", nameEn: "Banjul", utcOffset: 0, lat: 13.45, lon: -16.57 }] },
+            { country: "几内亚比绍", countryEn: "Guinea-Bissau", countryCode: "245", region: "westAfrica", cities: [{ name: "比绍", nameEn: "Bissau", utcOffset: 0, lat: 11.85, lon: -15.58 }] },
+            { country: "佛得角", countryEn: "Cape Verde", countryCode: "238", region: "westAfrica", cities: [{ name: "普拉亚", nameEn: "Praia", utcOffset: -1, lat: 14.92, lon: -23.51 }] },
+            { country: "尼日尔", countryEn: "Niger", countryCode: "227", region: "westAfrica", cities: [{ name: "尼亚美", nameEn: "Niamey", utcOffset: 1, lat: 13.51, lon: 2.11 }] },
+            
+            // 非洲 - 中非 (8)
+            { country: "刚果（金）", countryEn: "Democratic Republic of the Congo", countryCode: "243", region: "centralAfrica", cities: [{ name: "金沙萨", nameEn: "Kinshasa", utcOffset: 1, lat: -4.32, lon: 15.31 }] },
+            { country: "刚果（布）", countryEn: "Republic of the Congo", countryCode: "242", region: "centralAfrica", cities: [{ name: "布拉柴维尔", nameEn: "Brazzaville", utcOffset: 1, lat: -4.27, lon: 15.28 }] },
+            { country: "喀麦隆", countryEn: "Cameroon", countryCode: "237", region: "centralAfrica", cities: [{ name: "雅温得", nameEn: "Yaoundé", utcOffset: 1, lat: 3.87, lon: 11.52 }] },
+            { country: "中非共和国", countryEn: "Central African Republic", countryCode: "236", region: "centralAfrica", cities: [{ name: "班吉", nameEn: "Bangui", utcOffset: 1, lat: 4.37, lon: 18.56 }] },
+            { country: "加蓬", countryEn: "Gabon", countryCode: "241", region: "centralAfrica", cities: [{ name: "利伯维尔", nameEn: "Libreville", utcOffset: 1, lat: 0.39, lon: 9.45 }] },
+            { country: "赤道几内亚", countryEn: "Equatorial Guinea", countryCode: "240", region: "centralAfrica", cities: [{ name: "马拉博", nameEn: "Malabo", utcOffset: 1, lat: 3.75, lon: 8.78 }] },
+            { country: "圣多美和普林西比", countryEn: "São Tomé and Príncipe", countryCode: "239", region: "centralAfrica", cities: [{ name: "圣多美", nameEn: "São Tomé", utcOffset: 0, lat: 0.33, lon: 6.74 }] },
+            { country: "乍得", countryEn: "Chad", countryCode: "235", region: "centralAfrica", cities: [{ name: "恩贾梅纳", nameEn: "N'Djamena", utcOffset: 1, lat: 12.10, lon: 15.07 }] },
+            
+            // 非洲 - 东非 (19)
+            { country: "埃塞俄比亚", countryEn: "Ethiopia", countryCode: "251", region: "eastAfrica", cities: [{ name: "亚的斯亚贝巴", nameEn: "Addis Ababa", utcOffset: 3, lat: 9.03, lon: 38.74 }] },
+            { country: "肯尼亚", countryEn: "Kenya", countryCode: "254", region: "eastAfrica", cities: [{ name: "内罗毕", nameEn: "Nairobi", utcOffset: 3, lat: -1.29, lon: 36.82 }] },
+            { country: "坦桑尼亚", countryEn: "Tanzania", countryCode: "255", region: "eastAfrica", cities: [{ name: "达累斯萨拉姆", nameEn: "Dar es Salaam", utcOffset: 3, lat: -6.82, lon: 39.28 }] },
+            { country: "乌干达", countryEn: "Uganda", countryCode: "256", region: "eastAfrica", cities: [{ name: "坎帕拉", nameEn: "Kampala", utcOffset: 3, lat: 0.32, lon: 32.58 }] },
+            { country: "卢旺达", countryEn: "Rwanda", countryCode: "250", region: "eastAfrica", cities: [{ name: "基加利", nameEn: "Kigali", utcOffset: 2, lat: -1.95, lon: 30.06 }] },
+            { country: "布隆迪", countryEn: "Burundi", countryCode: "257", region: "eastAfrica", cities: [{ name: "布琼布拉", nameEn: "Bujumbura", utcOffset: 2, lat: -3.38, lon: 29.36 }] },
+            { country: "索马里", countryEn: "Somalia", countryCode: "252", region: "eastAfrica", cities: [{ name: "摩加迪沙", nameEn: "Mogadishu", utcOffset: 3, lat: 2.04, lon: 45.34 }] },
+            { country: "吉布提", countryEn: "Djibouti", countryCode: "253", region: "eastAfrica", cities: [{ name: "吉布提市", nameEn: "Djibouti City", utcOffset: 3, lat: 11.58, lon: 43.15 }] },
+            { country: "厄立特里亚", countryEn: "Eritrea", countryCode: "291", region: "eastAfrica", cities: [{ name: "阿斯马拉", nameEn: "Asmara", utcOffset: 3, lat: 15.33, lon: 38.93 }] },
+            { country: "南苏丹", countryEn: "South Sudan", countryCode: "211", region: "eastAfrica", cities: [{ name: "朱巴", nameEn: "Juba", utcOffset: 3, lat: 4.85, lon: 31.58 }] },
+            { country: "苏丹", countryEn: "Sudan", countryCode: "249", region: "eastAfrica", cities: [{ name: "喀土穆", nameEn: "Khartoum", utcOffset: 2, lat: 15.50, lon: 32.56 }] },
+            { country: "塞舌尔", countryEn: "Seychelles", countryCode: "248", region: "eastAfrica", cities: [{ name: "维多利亚", nameEn: "Victoria", utcOffset: 4, lat: -4.62, lon: 55.45 }] },
+            { country: "科摩罗", countryEn: "Comoros", countryCode: "269", region: "eastAfrica", cities: [{ name: "莫罗尼", nameEn: "Moroni", utcOffset: 3, lat: -11.70, lon: 43.26 }] },
+            { country: "马达加斯加", countryEn: "Madagascar", countryCode: "261", region: "eastAfrica", cities: [{ name: "塔那那利佛", nameEn: "Antananarivo", utcOffset: 3, lat: -18.93, lon: 47.52 }] },
+            { country: "毛里求斯", countryEn: "Mauritius", countryCode: "230", region: "eastAfrica", cities: [{ name: "路易港", nameEn: "Port Louis", utcOffset: 4, lat: -20.16, lon: 57.50 }] },
+            { country: "马拉维", countryEn: "Malawi", countryCode: "265", region: "eastAfrica", cities: [{ name: "利隆圭", nameEn: "Lilongwe", utcOffset: 2, lat: -13.97, lon: 33.79 }] },
+            { country: "赞比亚", countryEn: "Zambia", countryCode: "260", region: "eastAfrica", cities: [{ name: "卢萨卡", nameEn: "Lusaka", utcOffset: 2, lat: -15.41, lon: 28.28 }] },
+            { country: "津巴布韦", countryEn: "Zimbabwe", countryCode: "263", region: "eastAfrica", cities: [{ name: "哈拉雷", nameEn: "Harare", utcOffset: 2, lat: -17.83, lon: 31.05 }] },
+            { country: "莫桑比克", countryEn: "Mozambique", countryCode: "258", region: "eastAfrica", cities: [{ name: "马普托", nameEn: "Maputo", utcOffset: 2, lat: -25.96, lon: 32.58 }] },
+            
+            // 非洲 - 南非 (5)
+            { country: "南非", countryEn: "South Africa", countryCode: "27", region: "southernAfrica", cities: [{ name: "比勒陀利亚", nameEn: "Pretoria", utcOffset: 2, lat: -25.74, lon: 28.19 }] },
+            { country: "安哥拉", countryEn: "Angola", countryCode: "244", region: "southernAfrica", cities: [{ name: "罗安达", nameEn: "Luanda", utcOffset: 1, lat: -8.84, lon: 13.23 }] },
+            { country: "纳米比亚", countryEn: "Namibia", countryCode: "264", region: "southernAfrica", cities: [{ name: "温得和克", nameEn: "Windhoek", utcOffset: 1, lat: -22.57, lon: 17.07 }] },
+            { country: "博茨瓦纳", countryEn: "Botswana", countryCode: "267", region: "southernAfrica", cities: [{ name: "哈博罗内", nameEn: "Gaborone", utcOffset: 2, lat: -24.65, lon: 25.91 }] },
+            { country: "莱索托", countryEn: "Lesotho", countryCode: "266", region: "southernAfrica", cities: [{ name: "马塞卢", nameEn: "Maseru", utcOffset: 2, lat: -29.32, lon: 27.48 }] },
+            { country: "斯威士兰", countryEn: "Eswatini", countryCode: "268", region: "southernAfrica", cities: [{ name: "姆巴巴内", nameEn: "Mbabane", utcOffset: 2, lat: -26.31, lon: 31.13 }] },
+            
+            // 大洋洲 (14)
+            { country: "澳大利亚", countryEn: "Australia", countryCode: "61", region: "oceania", cities: [{ name: "堪培拉", nameEn: "Canberra", utcOffset: 10, lat: -35.31, lon: 149.13 }] },
+            { country: "新西兰", countryEn: "New Zealand", countryCode: "64", region: "oceania", cities: [{ name: "惠灵顿", nameEn: "Wellington", utcOffset: 12, lat: -41.28, lon: 174.77 }] },
+            { country: "巴布亚新几内亚", countryEn: "Papua New Guinea", countryCode: "675", region: "oceania", cities: [{ name: "莫尔兹比港", nameEn: "Port Moresby", utcOffset: 10, lat: -9.44, lon: 147.18 }] },
+            { country: "斐济", countryEn: "Fiji", countryCode: "679", region: "oceania", cities: [{ name: "苏瓦", nameEn: "Suva", utcOffset: 12, lat: -18.14, lon: 178.44 }] },
+            { country: "所罗门群岛", countryEn: "Solomon Islands", countryCode: "677", region: "oceania", cities: [{ name: "霍尼亚拉", nameEn: "Honiara", utcOffset: 11, lat: -9.43, lon: 159.95 }] },
+            { country: "瓦努阿图", countryEn: "Vanuatu", countryCode: "678", region: "oceania", cities: [{ name: "维拉港", nameEn: "Port Vila", utcOffset: 11, lat: -17.74, lon: 168.32 }] },
+            { country: "萨摩亚", countryEn: "Samoa", countryCode: "685", region: "oceania", cities: [{ name: "阿皮亚", nameEn: "Apia", utcOffset: -11, lat: -13.83, lon: -171.77 }] },
+            { country: "汤加", countryEn: "Tonga", countryCode: "676", region: "oceania", cities: [{ name: "努库阿洛法", nameEn: "Nukuʻalofa", utcOffset: 13, lat: -21.13, lon: -175.20 }] },
+            { country: "库克群岛", countryEn: "Cook Islands", countryCode: "682", region: "oceania", cities: [{ name: "阿瓦鲁阿", nameEn: "Avarua", utcOffset: -10, lat: -21.21, lon: -159.78 }] },
+            { country: "纽埃", countryEn: "Niue", countryCode: "683", region: "oceania", cities: [{ name: "阿洛菲", nameEn: "Alofi", utcOffset: -11, lat: -19.03, lon: -169.86 }] },
+            { country: "帕劳", countryEn: "Palau", countryCode: "680", region: "oceania", cities: [{ name: "梅莱凯奥克", nameEn: "Melekeok", utcOffset: 9, lat: 7.51, lon: 134.63 }] },
+            { country: "密克罗尼西亚联邦", countryEn: "Federated States of Micronesia", countryCode: "691", region: "oceania", cities: [{ name: "帕利基尔", nameEn: "Palikir", utcOffset: 11, lat: 6.92, lon: 158.16 }] },
+            { country: "马绍尔群岛", countryEn: "Marshall Islands", countryCode: "692", region: "oceania", cities: [{ name: "马朱罗", nameEn: "Majuro", utcOffset: 12, lat: 7.13, lon: 171.18 }] },
+            { country: "基里巴斯", countryEn: "Kiribati", countryCode: "686", region: "oceania", cities: [{ name: "塔拉瓦", nameEn: "Tarawa", utcOffset: 12, lat: 1.43, lon: 173.03 }] },
+            { country: "瑙鲁", countryEn: "Nauru", countryCode: "674", region: "oceania", cities: [{ name: "亚伦", nameEn: "Yaren", utcOffset: 12, lat: -0.54, lon: 166.92 }] },
+            { country: "图瓦卢", countryEn: "Tuvalu", countryCode: "688", region: "oceania", cities: [{ name: "富纳富提", nameEn: "Funafuti", utcOffset: 12, lat: -8.52, lon: 179.19 }] },
+            { country: "关岛", countryEn: "Guam", countryCode: "1", region: "oceania", cities: [{ name: "阿加尼亚", nameEn: "Hagåtña", utcOffset: 10, lat: 13.47, lon: 144.75 }] },
+            { country: "北马里亚纳群岛", countryEn: "Northern Mariana Islands", countryCode: "1", region: "oceania", cities: [{ name: "塞班", nameEn: "Saipan", utcOffset: 10, lat: 15.12, lon: 145.75 }] },
+            { country: "美属萨摩亚", countryEn: "American Samoa", countryCode: "1", region: "oceania", cities: [{ name: "帕果帕果", nameEn: "Pago Pago", utcOffset: -11, lat: -14.27, lon: -170.70 }] },
+            { country: "法属波利尼西亚", countryEn: "French Polynesia", countryCode: "689", region: "oceania", cities: [{ name: "帕皮提", nameEn: "Papeete", utcOffset: -10, lat: -17.53, lon: -149.56 }] }
+        ];
+
+        // 地区层级关系映射
+        const regionHierarchy = {
+            'asia': ['eastAsia', 'southeastAsia', 'southAsia', 'centralAsia', 'westAsia'],
+            'europe': ['easternEurope', 'westernEurope', 'northernEurope', 'southernEurope', 'centralEurope'],
+            'africa': ['northAfrica', 'westAfrica', 'centralAfrica', 'eastAfrica', 'southernAfrica'],
+            'northAmerica': [],
+            'southAmerica': [],
+            'oceania': []
+        };
+
+        // 全局变量
+        let currentRegion = 'all';
+        let currentStatus = 'all';
+        let searchTerm = '';
+        let filteredCountries = [];
+        let visibleElements = new Set(); // 跟踪可见元素ID
+        // 存储温度数据的缓存，有效期10分钟
+        const temperatureCache = new Map();
+        
+        // 初始化函数
+        function init() {
+            // 尝试从localStorage加载缓存
+            loadTemperatureCache();
+            
+            // 首次加载时渲染所有国家
+            renderCountries();
+            
+            // 优化时间更新 - 只更新可见元素
+            setInterval(updateVisibleTimes, 1000);
+            
+            // 更新北京时间显示
+            updateBeijingTime();
+            setInterval(updateBeijingTime, 1000);
+            
+            // 绑定搜索事件 - 添加防抖
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', debounce(handleSearch, 300));
+            
+            // 绑定地区筛选按钮事件
+            document.querySelectorAll('.region-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    setRegionFilter(e.target.dataset.region);
+                });
+            });
+            
+            // 绑定移动版地区筛选
+            document.getElementById('mobile-region-filter').addEventListener('change', (e) => {
+                setRegionFilter(e.target.value);
+            });
+            
+            // 绑定状态筛选按钮事件
+            document.getElementById('status-all').addEventListener('click', () => setStatusFilter('all'));
+            document.getElementById('status-working').addEventListener('click', () => setStatusFilter('working'));
+            document.getElementById('status-offwork').addEventListener('click', () => setStatusFilter('offwork'));
+            
+            // 绑定移动版状态筛选
+            document.getElementById('mobile-status-filter').addEventListener('change', (e) => {
+                setStatusFilter(e.target.value);
+            });
+            
+            // 监听滚动事件，更新可见元素
+            window.addEventListener('scroll', throttle(updateVisibleElements, 100));
+        }
+
+        // 防抖函数 - 减少搜索时的频繁渲染
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // 节流函数 - 限制滚动事件处理频率
+        function throttle(func, limit) {
+            let lastCall = 0;
+            return function(...args) {
+                const now = Date.now();
+                if (now - lastCall >= limit) {
+                    lastCall = now;
+                    func.apply(this, args);
+                }
+            };
+        }
+
+        // 从localStorage加载缓存
+        function loadTemperatureCache() {
+            try {
+                const cached = localStorage.getItem('temperatureCache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    Object.entries(parsed).forEach(([key, value]) => {
+                        // 只保留未过期的缓存
+                        if (Date.now() - value.timestamp < 600000) {
+                            temperatureCache.set(key, value);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('加载温度缓存失败:', e);
+            }
+        }
+
+        // 保存缓存到localStorage
+        function saveTemperatureCache() {
+            try {
+                const cacheObj = Object.fromEntries(temperatureCache.entries());
+                localStorage.setItem('temperatureCache', JSON.stringify(cacheObj));
+            } catch (e) {
+                console.error('保存温度缓存失败:', e);
+            }
+        }
+
+        // 设置地区筛选
+        function setRegionFilter(region) {
+            currentRegion = region;
+            
+            // 更新桌面版按钮样式
+            document.querySelectorAll('.region-btn').forEach(btn => {
+                if (btn.dataset.region === region) {
+                    btn.className = 'region-btn px-3 py-1 rounded-full text-sm region-pill-active transition-colors';
+                } else {
+                    btn.className = 'region-btn px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors';
+                }
+            });
+            
+            // 更新移动版筛选器
+            document.getElementById('mobile-region-filter').value = region;
+            
+            // 显示/隐藏子区域筛选
+            document.getElementById('asia-subregions').classList.add('hidden');
+            document.getElementById('europe-subregions').classList.add('hidden');
+            document.getElementById('africa-subregions').classList.add('hidden');
+            
+            if (region === 'asia') {
+                document.getElementById('asia-subregions').classList.remove('hidden');
+            } else if (region === 'europe') {
+                document.getElementById('europe-subregions').classList.remove('hidden');
+            } else if (region === 'africa') {
+                document.getElementById('africa-subregions').classList.remove('hidden');
+            }
+            
+            // 重新渲染
+            renderCountries();
+        }
+
+        // 设置状态筛选
+        function setStatusFilter(status) {
+            currentStatus = status;
+            
+            // 更新桌面版按钮样式
+            document.getElementById('status-all').className = status === 'all' 
+                ? 'px-3 py-1 rounded-full text-sm bg-primary text-white transition-colors' 
+                : 'px-3 py-1 rounded-full text-sm bg-gray-100 hover:bg-gray-200 transition-colors';
+                
+            document.getElementById('status-working').className = status === 'working' 
+                ? 'px-3 py-1 rounded-full text-sm bg-working text-white transition-colors' 
+                : 'px-3 py-1 rounded-full text-sm bg-working/10 text-working hover:bg-working/20 transition-colors';
+                
+            document.getElementById('status-offwork').className = status === 'offwork' 
+                ? 'px-3 py-1 rounded-full text-sm bg-offwork text-white transition-colors' 
+                : 'px-3 py-1 rounded-full text-sm bg-offwork/10 text-offwork hover:bg-offwork/20 transition-colors';
+            
+            // 更新移动版筛选器
+            document.getElementById('mobile-status-filter').value = status;
+            
+            // 重新渲染
+            renderCountries();
+        }
+
+        // 处理搜索
+        function handleSearch(e) {
+            searchTerm = e.target.value.trim().toLowerCase();
+            renderCountries();
+        }
+
+        // 获取温度颜色类
+        function getTemperatureClass(temp) {
+            if (temp < 10) return 'tempCold';
+            if (temp < 25) return 'tempWarm';
+            return 'tempHot';
+        }
+
+        // 获取天气图标
+        function getWeatherIcon(weatherCode) {
+            if (weatherCode >= 200 && weatherCode < 300) {
+                return '<i class="fa fa-bolt text-yellow-500"></i>'; // 雷暴
+            } else if (weatherCode >= 300 && weatherCode < 400) {
+                return '<i class="fa fa-tint text-blue-400"></i>'; // 毛毛雨/小雨
+            } else if (weatherCode >= 500 && weatherCode < 600) {
+                return '<i class="fa fa-tint text-blue-600"></i>'; // 雨
+            } else if (weatherCode >= 600 && weatherCode < 700) {
+                return '<i class="fa fa-snowflake-o text-blue-100"></i>'; // 雪
+            } else if (weatherCode >= 700 && weatherCode < 800) {
+                return '<i class="fa fa-cloud text-gray-400"></i>'; // 雾/霾等
+            } else if (weatherCode === 800) {
+                return '<i class="fa fa-sun-o text-yellow-500"></i>'; // 晴天
+            } else if (weatherCode > 800) {
+                return '<i class="fa fa-cloud text-gray-500"></i>'; // 多云
+            }
+            return '<i class="fa fa-question-circle text-gray-400"></i>';
+        }
+
+        // 批量获取天气数据 - 减少请求次数
+        function getBatchWeatherData(coordinates) {
+            // 每批最多请求5个坐标点，避免URL过长
+            const batchSize = 5;
+            const batches = [];
+            
+            // 分割坐标数组为多个批次
+            for (let i = 0; i < coordinates.length; i += batchSize) {
+                batches.push(coordinates.slice(i, i + batchSize));
+            }
+            
+            // 处理所有批次的请求
+            const promises = batches.map(batch => {
+                // 构建坐标参数
+                const coordsParams = batch.map(({lat, lon}) => `latitude=${lat}&longitude=${lon}`).join('&');
+                const url = `${weatherConfig.weatherApiUrl}?${coordsParams}&current_weather=true&timezone=GMT`;
+                
+                return fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 处理API响应，更新缓存
+                        batch.forEach((coord, index) => {
+                            const key = `${coord.lat},${coord.lon}`;
+                            const weatherData = {
+                                temp: Math.round(data[index].current_weather.temperature),
+                                weatherCode: data[index].current_weather.weathercode,
+                                weatherDesc: getWeatherDescription(data[index].current_weather.weathercode),
+                                timestamp: Date.now()
+                            };
+                            temperatureCache.set(key, weatherData);
+                        });
+                        return data;
+                    });
+            });
+            
+            // 所有批次完成后保存缓存
+            return Promise.all(promises).then(() => {
+                saveTemperatureCache();
+                return true;
+            }).catch(error => {
+                console.error('批量获取天气数据失败:', error);
+                return false;
+            });
+        }
+
+        // 根据天气代码转换为天气描述
+        function getWeatherDescription(code) {
+            const descriptions = {
+                0: "晴天",
+                1: "主要晴天",
+                2: "部分多云",
+                3: "多云",
+                45: "雾",
+                48: "霜雾",
+                51: "小毛毛雨",
+                53: "中等毛毛雨",
+                55: "密集毛毛雨",
+                56: "小冻毛毛雨",
+                57: "密集冻毛毛雨",
+                61: "小雨",
+                63: "中雨",
+                65: "大雨",
+                66: "小冻雨",
+                67: "大冻雨",
+                71: "小雪",
+                73: "中雪",
+                75: "大雪",
+                77: "雪粒",
+                80: "小阵雨",
+                81: "中阵雨",
+                82: "大阵雨",
+                85: "小阵雪",
+                86: "大阵雪",
+                95: "雷暴",
+                96: "小冰雹雷暴",
+                99: "大冰雹雷暴"
+            };
+            
+            return descriptions[code] || "未知天气";
+        }
+
+        // 更新城市温度显示
+        function updateCityTemperature(element, city, lat, lon) {
+            const cacheKey = `${lat},${lon}`;
+            
+            // 显示缓存数据（如果有）
+            if (temperatureCache.has(cacheKey)) {
+                const data = temperatureCache.get(cacheKey);
+                const tempClass = getTemperatureClass(data.temp);
+                const weatherIcon = getWeatherIcon(data.weatherCode);
+                
+                element.innerHTML = `
+                    ${weatherIcon}
+                    <span class="temp-indicator bg-${tempClass}"></span>
+                    ${data.temp}°C
+                `;
+                element.title = data.weatherDesc;
+            } else {
+                // 显示加载中
+                element.innerHTML = '<i class="fa fa-spinner fa-spin text-gray-400"></i>';
+            }
+        }
+
+        // 检查国家是否属于所选地区
+        function isCountryInRegion(country) {
+            if (currentRegion === 'all') return true;
+            
+            // 检查是否是大洲级筛选
+            if (Object.keys(regionHierarchy).includes(currentRegion)) {
+                return regionHierarchy[currentRegion].includes(country.region) || 
+                       country.region === currentRegion;
+            }
+            
+            // 否则检查是否直接匹配
+            return country.region === currentRegion;
+        }
+
+        // 检查城市是否在工作时间
+        function isWorkingHours(utcOffset) {
+            const now = new Date();
+            const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+            const localTime = new Date(utcTime + utcOffset * 3600000);
+            const hour = localTime.getHours();
+            return hour >= 9 && hour < 18;
+        }
+
+        // 获取本地时间字符串
+        function getLocalTimeString(utcOffset) {
+            const now = new Date();
+            const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+            const localTime = new Date(utcTime + utcOffset * 3600000);
+            
+            return localTime.toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // 更新可见元素的时间
+        function updateVisibleTimes() {
+            visibleElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element && element.dataset.utcOffset) {
+                    element.textContent = getLocalTimeString(parseFloat(element.dataset.utcOffset));
+                }
+            });
+        }
+
+        // 更新可见元素集合
+        function updateVisibleElements() {
+            const newVisible = new Set();
+            const cards = document.querySelectorAll('.country-card');
+            
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                // 检查元素是否在视口内
+                if (rect.top < window.innerHeight + 200 && rect.bottom > -200) {
+                    // 获取该卡片内所有时间元素ID
+                    const timeElements = card.querySelectorAll('[id^="time-"]');
+                    timeElements.forEach(el => newVisible.add(el.id));
+                }
+            });
+            
+            visibleElements = newVisible;
+        }
+
+        // 渲染国家卡片
+        function renderCountries() {
+            const container = document.getElementById('countries-container');
+            const fragment = document.createDocumentFragment(); // 使用文档片段减少重绘
+            const coordinatesToFetch = [];
+            
+            // 筛选国家
+            filteredCountries = worldData.filter(country => {
+                // 地区筛选
+                if (!isCountryInRegion(country)) return false;
+                
+                // 搜索筛选
+                if (searchTerm) {
+                    const matchesCountry = country.country.toLowerCase().includes(searchTerm) || 
+                                          country.countryEn.toLowerCase().includes(searchTerm);
+                    
+                    if (matchesCountry) return true;
+                    
+                    // 检查是否匹配任何城市
+                    const matchesCity = country.cities.some(city => 
+                        city.name.toLowerCase().includes(searchTerm) || 
+                        city.nameEn.toLowerCase().includes(searchTerm)
+                    );
+                    
+                    if (!matchesCity) return false;
+                }
+                
+                // 状态筛选
+                if (currentStatus !== 'all') {
+                    // 检查是否有任何城市符合工作状态
+                    const hasMatchingStatus = country.cities.some(city => {
+                        const working = isWorkingHours(city.utcOffset);
+                        return (currentStatus === 'working' && working) || 
+                               (currentStatus === 'offwork' && !working);
+                    });
+                    
+                    if (!hasMatchingStatus) return false;
+                }
+                
+                return true;
+            });
+            
+            // 更新结果计数
+            const countElement = document.querySelector('#result-count .font-medium');
+            countElement.textContent = filteredCountries.length;
+            
+            // 生成国家卡片
+            filteredCountries.forEach(country => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl p-5 card-shadow country-card-hover country-card';
+                
+                let citiesHtml = '';
+                country.cities.forEach((city, cityIndex) => {
+                    const isWorking = isWorkingHours(city.utcOffset);
+                    const timeId = `time-${country.countryCode}-${cityIndex}`;
+                    
+                    // 收集需要获取天气数据的坐标
+                    const cacheKey = `${city.lat},${city.lon}`;
+                    if (!temperatureCache.has(cacheKey)) {
+                        coordinatesToFetch.push({
+                            lat: city.lat,
+                            lon: city.lon,
+                            elementId: `temp-${country.countryCode}-${cityIndex}`
+                        });
+                    }
+                    
+                    citiesHtml += `
+                        <div class="mb-3 last:mb-0">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="flex items-center">
+                                    <span class="font-medium">${city.name} / ${city.nameEn}</span>
+                                    <span class="text-xs text-gray-500 ml-2">UTC${city.utcOffset >= 0 ? '+' : ''}${city.utcOffset}</span>
+                                </div>
+                                <span class="text-xs px-2 py-0.5 rounded-full ${isWorking ? 'bg-working/10 text-working' : 'bg-offwork/10 text-offwork'}">
+                                    ${isWorking ? '工作中' : '已下班'}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span id="${timeId}" class="text-xl font-semibold" data-utc-offset="${city.utcOffset}">
+                                    ${getLocalTimeString(city.utcOffset)}
+                                </span>
+                                <span id="temp-${country.countryCode}-${cityIndex}" class="flex items-center">
+                                    <i class="fa fa-spinner fa-spin text-gray-400"></i>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-bold text-lg">${country.country} <span class="country-code">+${country.countryCode}</span></h3>
+                        <span class="text-sm text-gray-500">${country.countryEn}</span>
+                    </div>
+                    <div class="city-list">
+                        ${citiesHtml}
+                    </div>
+                `;
+                
+                fragment.appendChild(card);
+            });
+            
+            // 清空容器并添加新内容
+            container.innerHTML = '';
+            container.appendChild(fragment);
+            
+            // 批量更新可见元素集合
+            updateVisibleElements();
+            
+            // 批量获取需要的天气数据
+            if (coordinatesToFetch.length > 0) {
+                // 控制并发请求数量，避免同时发起太多请求
+                const MAX_CONCURRENT_REQUESTS = 3;
+                const chunks = [];
+                
+                for (let i = 0; i < coordinatesToFetch.length; i += MAX_CONCURRENT_REQUESTS * 5) {
+                    chunks.push(coordinatesToFetch.slice(i, i + MAX_CONCURRENT_REQUESTS * 5));
+                }
+                
+                // 依次处理每个数据块
+                (function processChunks(index) {
+                    if (index >= chunks.length) return;
+                    
+                    getBatchWeatherData(chunks[index]).then(success => {
+                        if (success) {
+                            // 更新当前批次的温度显示
+                            chunks[index].forEach(({lat, lon, elementId}) => {
+                                const element = document.getElementById(elementId);
+                                if (element) {
+                                    const data = temperatureCache.get(`${lat},${lon}`);
+                                    if (data) {
+                                        const tempClass = getTemperatureClass(data.temp);
+                                        const weatherIcon = getWeatherIcon(data.weatherCode);
+                                        
+                                        element.innerHTML = `
+                                            ${weatherIcon}
+                                            <span class="temp-indicator bg-${tempClass}"></span>
+                                            ${data.temp}°C
+                                        `;
+                                        element.title = data.weatherDesc;
+                                    }
+                                }
+                            });
+                        }
+                        // 处理下一个数据块
+                        processChunks(index + 1);
+                    });
+                })(0);
+            } else {
+                // 如果所有数据都在缓存中，直接更新
+                document.querySelectorAll('[id^="temp-"]').forEach(element => {
+                    const parts = element.id.split('-');
+                    if (parts.length >= 3) {
+                        const country = filteredCountries.find(c => c.countryCode === parts[1]);
+                        if (country && country.cities[parts[2]]) {
+                            const city = country.cities[parts[2]];
+                            updateCityTemperature(element, city.name, city.lat, city.lon);
+                        }
+                    }
+                });
+            }
+        }
+
+      // 更新北京时间显示
+function updateBeijingTime() {
+    const now = new Date();
+    // 计算UTC时间的毫秒数，然后加上8小时的毫秒数得到北京时间
+    const beijingTime = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 8 * 3600000);
+    document.getElementById('beijing-time').textContent = 
+        beijingTime.toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false // 确保使用24小时制，避免上午/下午显示
+        });
+}
+
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body></html>
